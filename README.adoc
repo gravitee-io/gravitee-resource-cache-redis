@@ -1,0 +1,176 @@
+= Redis Cache Resource
+
+ifdef::env-github[]
+image:https://ci.gravitee.io/buildStatus/icon?job=gravitee-io/gravitee-resource-cache-redis/master["Build status", link="https://ci.gravitee.io/job/gravitee-io/job/gravitee-resource-cache-redis/"]
+image:https://badges.gitter.im/Join Chat.svg["Gitter", link="https://gitter.im/gravitee-io/gravitee-io?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge"]
+endif::[]
+
+== Description
+
+The Redis cache resource is used to maintain a cache and link it to the API lifecycle.
+It means that the cache is initialized when the API is starting and released when API is stopped.
+
+This cache is responsible to store HTTP response from the backend to avoid subsequent calls.
+
+Current implementation of the cache resource is based on https://redis.io/[Redis].
+
+== Configuration
+
+You can configure the resource with the following options :
+
+|===
+|Property |Required |Description |Type |Default
+
+.^|name
+^.^|X
+|The name of the cache.
+^.^|string
+^.^|my-redis-cache
+
+.^|maxTotal
+^.^|X
+|The maximum number of connections that are supported by the pool.
+^.^|integer
+^.^|256
+
+.^|password
+^.^|X
+|The password of the instance.
+^.^|string
+^.^|
+
+.^|timeToLiveSeconds
+^.^|X
+|The maximum number of seconds an element can exist in the cache regardless of use. The element expires at this limit and will no longer be returned from the cache. The default value is 0, which means no timeToLive (TTL) eviction takes place (infinite lifetime).
+^.^|integer
+^.^|0
+
+.^|timeout
+^.^|X
+|The timeout parameter specifies the connection timeout and the read/write timeout.
+^.^|integer
+^.^|2000
+
+.^|timeout
+^.^|X
+|The timeout parameter specifies the connection timeout and the read/write timeout.
+^.^|integer
+^.^|2000
+
+.^|useSsl
+^.^|X
+| U+se SSL connections.
+^.^|boolean
+^.^|true
+
+.^|sentinelMode
+^.^|X
+|Sentinel provides high availability for Redis. In practical terms this means that using Sentinel you can create a Redis deployment that resists without human intervention certain kinds of failures.
+^.^|boolean
+^.^|false
+
+|===
+
+=== Standalone configuration
+
+|===
+|Property |Required |Description |Type |Default
+
+.^|host
+^.^|X
+|The host of the instance
+^.^|string
+^.^|localhost
+
+.^|port
+^.^|X
+|The port of the instance.
+^.^|integer
+^.^|6379
+
+|===
+
+[source, json]
+.Configuration example
+----
+{
+    "name" : "my-redis-cache",
+    "type" : "cache-redis",
+    "enabled" : true,
+    "configuration" : {
+        "name" : "my-redis-cache",
+        "maxTotal" : 256,
+        "password" : "secret",
+        "timeToLiveSeconds" : 600,
+        "timeout" : 2000,
+        "useSsl" : true,
+        "sentinelMode" : false,
+        "standalone": {
+            "host" : "localhost",
+            "port" : 6379
+        }
+    }
+}
+----
+
+=== Sentinel configuration
+
+|===
+|Property |Required |Description |Type |Default
+
+.^|masterId
+^.^|X
+|The sentinel master id
+^.^|string
+^.^|redis-master
+
+.^|password
+^.^|X
+|The sentinel password.
+^.^|string
+^.^|
+
+.^|nodes
+^.^|X
+|List of sentinel nodes.
+^.^|Array
+^.^|
+
+|===
+
+[source, json]
+.Configuration example
+----
+{
+    "name" : "my-redis-cache",
+    "type" : "cache-redis",
+    "enabled" : true,
+    "configuration" : {
+        "name" : "my-redis-cache",
+        "maxTotal" : 256,
+        "password" : "secret",
+        "timeToLiveSeconds" : 600,
+        "timeout" : 2000,
+        "useSsl" : true,
+        "sentinelMode" : true,
+        "sentinel" : {
+            "masterId" : "redis-master",
+            "password" : "secret",
+            "nodes": [
+              {
+                "host" : "localhost",
+                "port" : 26379
+              },
+              {
+                "host" : "localhost",
+                "port" : 26380
+              },
+              {
+                "host" : "localhost",
+                "port" : 26381
+              }
+            ]
+        }
+    }
+}
+----
