@@ -17,11 +17,9 @@ package io.gravitee.resource.cache.redis;
 
 import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.Element;
-import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfiguration;
-import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.cache.support.SimpleValueWrapper;
 
 /**
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
@@ -31,29 +29,27 @@ public class RedisDelegate implements Cache {
 
     private final Logger logger = LoggerFactory.getLogger(RedisDelegate.class);
 
-    private final RedisTemplate<Object, Object> redisTemplate;
-    private final RedisCacheResourceConfiguration configuration;
+    private final org.springframework.cache.Cache cache;
 
-    public RedisDelegate(RedisTemplate<Object, Object> redisTemplate, RedisCacheResourceConfiguration configuration) {
-        this.redisTemplate = redisTemplate;
-        this.configuration = configuration;
+    public RedisDelegate(org.springframework.cache.Cache cache) {
+        this.cache = cache;
     }
 
     @Override
     public String getName() {
-        return this.configuration.getName();
+        return this.cache.getName();
     }
 
     @Override
     public Object getNativeCache() {
-        return redisTemplate;
+        return cache.getNativeCache();
     }
 
     @Override
     public Element get(Object key) {
         logger.debug("Find in cache {}", key);
         try {
-            Object o = redisTemplate.opsForValue().get(key);
+            SimpleValueWrapper o = (SimpleValueWrapper) cache.get(key);
             logger.debug("Found {}", o);
             return o == null
                 ? null
@@ -65,7 +61,7 @@ public class RedisDelegate implements Cache {
 
                     @Override
                     public Object value() {
-                        return o;
+                        return o.get();
                     }
                 };
         } catch (Throwable e) {
@@ -79,11 +75,7 @@ public class RedisDelegate implements Cache {
     public void put(Element element) {
         logger.debug("Put in cache {}", element.key());
         try {
-            long ttl = this.configuration.getTimeToLiveSeconds();
-            if ((ttl == 0 && element.timeToLive() > 0) || (ttl > 0 && element.timeToLive() > 0 && ttl > element.timeToLive())) {
-                ttl = element.timeToLive();
-            }
-            redisTemplate.opsForValue().set(element.key(), element.value(), ttl, TimeUnit.SECONDS);
+            cache.put(element.key(), element.value());
         } catch (Throwable e) {
             logger.error("Cannot put element in cache", e);
         }
@@ -91,11 +83,11 @@ public class RedisDelegate implements Cache {
 
     @Override
     public void evict(Object o) {
-        redisTemplate.delete(o);
+        cache.evict(o);
     }
 
     @Override
     public void clear() {
-        redisTemplate.getConnectionFactory().getConnection().flushAll();
+        cache.clear();
     }
 }

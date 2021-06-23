@@ -15,9 +15,6 @@
  */
 package io.gravitee.resource.cache.redis;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.CacheResource;
@@ -28,14 +25,14 @@ import java.util.List;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisSentinelConfiguration;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettucePoolingClientConfiguration;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
@@ -45,25 +42,49 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 public class RedisCacheResource extends CacheResource<RedisCacheResourceConfiguration> {
 
     private final Logger logger = LoggerFactory.getLogger(RedisCacheResource.class);
+    private static final char KEY_SEPARATOR = '_';
+    private static final String MAP_PREFIX = "cache-resources" + KEY_SEPARATOR;
+    private RedisCacheManager redisCacheManager;
+
+    /**
+     * Generate a unique identifier for the resource cache.
+     *
+     * @param executionContext
+     * @return
+     */
+    private String computeConfigName(ExecutionContext executionContext) {
+        StringBuilder sb = new StringBuilder(MAP_PREFIX).append(configuration().getName());
+        Object apiId = executionContext.getAttribute(ExecutionContext.ATTR_API);
+        if (apiId != null) {
+            sb.append(KEY_SEPARATOR).append(apiId);
+        }
+        Object deployedAt = executionContext.getAttribute(ExecutionContext.ATTR_API_DEPLOYED_AT);
+        if (deployedAt != null) {
+            sb.append(KEY_SEPARATOR).append(deployedAt);
+        }
+        return sb.toString();
+    }
+
+    @Override
+    protected void doStart() throws Exception {
+        super.doStart();
+        logger.debug("Create redis cache manager");
+        StringRedisSerializer stringSerializer = new StringRedisSerializer();
+        try {
+            RedisCacheConfiguration conf = RedisCacheConfiguration
+                .defaultCacheConfig()
+                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(stringSerializer))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(stringSerializer))
+                .entryTtl(Duration.ofSeconds(configuration().getTimeToLiveSeconds()));
+            this.redisCacheManager = RedisCacheManager.builder(getConnectionFactory()).cacheDefaults(conf).build();
+        } catch (Throwable e) {
+            logger.error("Cannot create redis cache manager", e);
+        }
+    }
 
     @Override
     public Cache getCache(ExecutionContext executionContext) {
-        logger.debug("Get cache");
-        StringRedisSerializer stringSerializer = new StringRedisSerializer();
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
-        RedisSerializer jacksonSerializer = new GenericJackson2JsonRedisSerializer(mapper);
-        try {
-            RedisTemplate<Object, Object> redisTemplate = new RedisTemplate();
-            redisTemplate.setConnectionFactory(getConnectionFactory());
-            redisTemplate.setKeySerializer(stringSerializer);
-            redisTemplate.setValueSerializer(jacksonSerializer);
-            redisTemplate.afterPropertiesSet();
-            return new RedisDelegate(redisTemplate, configuration());
-        } catch (Throwable e) {
-            logger.error("Cannot get cache", e);
-        }
-        return null;
+        return new RedisDelegate(this.redisCacheManager.getCache(computeConfigName(executionContext)));
     }
 
     private LettucePoolingClientConfiguration buildLettuceClientConfiguration() {
@@ -105,6 +126,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
 
             lettuceConnectionFactory = new LettuceConnectionFactory(standaloneConfiguration, buildLettuceClientConfiguration());
         }
+
         lettuceConnectionFactory.afterPropertiesSet();
 
         return lettuceConnectionFactory;
