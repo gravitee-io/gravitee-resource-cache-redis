@@ -15,11 +15,14 @@
  */
 package io.gravitee.resource.cache.redis;
 
+import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.Element;
+import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.support.SimpleValueWrapper;
+import org.springframework.data.redis.cache.RedisCacheWriter;
+import org.springframework.data.redis.serializer.RedisSerializer;
 
 /**
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
@@ -30,9 +33,23 @@ public class RedisDelegate implements Cache {
     private final Logger logger = LoggerFactory.getLogger(RedisDelegate.class);
 
     private final org.springframework.cache.Cache cache;
+    private final int timeToLiveSeconds;
+    private final RedisSerializer serializer;
+    private boolean releaseCache;
+    private ExecutionContext executionContext;
 
-    public RedisDelegate(org.springframework.cache.Cache cache) {
+    public RedisDelegate(
+        org.springframework.cache.Cache cache,
+        ExecutionContext executionContext,
+        RedisSerializer serializer,
+        int timeToLiveSeconds,
+        boolean releaseCache
+    ) {
         this.cache = cache;
+        this.executionContext = executionContext;
+        this.timeToLiveSeconds = timeToLiveSeconds;
+        this.serializer = serializer;
+        this.releaseCache = releaseCache;
     }
 
     @Override
@@ -49,11 +66,11 @@ public class RedisDelegate implements Cache {
     public Element get(Object key) {
         logger.debug("Find in cache {}", key);
         try {
-            SimpleValueWrapper o = (SimpleValueWrapper) cache.get(key);
-            logger.debug("Found {}", o);
-            return o == null
-                ? null
-                : new Element() {
+            RedisCacheWriter redisCacheWriter = (RedisCacheWriter) this.getNativeCache();
+            byte[] bytes = redisCacheWriter.get(this.getName(), buildKey(key));
+            if (bytes != null) {
+                Object value = this.serializer.deserialize(bytes);
+                return new Element() {
                     @Override
                     public Object key() {
                         return key;
@@ -61,9 +78,11 @@ public class RedisDelegate implements Cache {
 
                     @Override
                     public Object value() {
-                        return o.get();
+                        return value;
                     }
                 };
+            }
+            return null;
         } catch (Throwable e) {
             logger.error("Cannot get element in cache", e);
         }
@@ -75,10 +94,24 @@ public class RedisDelegate implements Cache {
     public void put(Element element) {
         logger.debug("Put in cache {}", element.key());
         try {
-            cache.put(element.key(), element.value());
+            int ttl = this.timeToLiveSeconds;
+            if ((ttl == 0 && element.timeToLive() > 0) || (ttl > 0 && element.timeToLive() > 0 && ttl > element.timeToLive())) {
+                ttl = element.timeToLive();
+            }
+            RedisCacheWriter redisCacheWriter = (RedisCacheWriter) this.getNativeCache();
+
+            redisCacheWriter.put(getName(), buildKey(element.key()), this.serializer.serialize(element.value()), Duration.ofSeconds(ttl));
         } catch (Throwable e) {
             logger.error("Cannot put element in cache", e);
         }
+    }
+
+    private byte[] buildKey(Object key) {
+        String allKey = this.getName() + key;
+        if (this.releaseCache) {
+            allKey += ":" + this.executionContext.getAttribute(ExecutionContext.ATTR_API_DEPLOYED_AT);
+        }
+        return this.serializer.serialize(allKey);
     }
 
     @Override
@@ -89,5 +122,9 @@ public class RedisDelegate implements Cache {
     @Override
     public void clear() {
         cache.clear();
+    }
+
+    public void setExecutionContext(ExecutionContext executionContext) {
+        this.executionContext = executionContext;
     }
 }

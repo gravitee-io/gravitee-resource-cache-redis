@@ -23,11 +23,12 @@ import io.gravitee.resource.api.ResourceConfiguration;
  */
 public class RedisCacheResourceConfiguration implements ResourceConfiguration {
 
-    private String name = "redis";
-    private int maxTotal = 256;
+    private String name = "my-redis-cache";
+    private int maxTotal = 8;
     private String password;
     private long timeToLiveSeconds = 0;
     private long timeout = 2000;
+    private boolean releaseCache = false;
     private boolean useSsl = true;
     private boolean sentinelMode = false;
     private HostAndPort standalone = new HostAndPort();
@@ -71,6 +72,14 @@ public class RedisCacheResourceConfiguration implements ResourceConfiguration {
 
     public void setTimeout(long timeout) {
         this.timeout = timeout;
+    }
+
+    public boolean isReleaseCache() {
+        return releaseCache;
+    }
+
+    public void setReleaseCache(boolean releaseCache) {
+        this.releaseCache = releaseCache;
     }
 
     public boolean isUseSsl() {
