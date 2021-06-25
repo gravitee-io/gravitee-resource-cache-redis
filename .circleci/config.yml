@@ -7,8 +7,8 @@ parameters:
     default: this_one
   have_a_great_we:
     type: string
-    default: true
-    description: "Awesome have a great week end everyone ! :D"
+    default: "Awesome have a great week end everyone ! :D"
+    description: "A hapy we message to the world :) "
 orbs:
   slack: circleci/slack@4.2.1
   gravitee: gravitee-io/gravitee@1.0
