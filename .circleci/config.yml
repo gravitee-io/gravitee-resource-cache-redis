@@ -28,7 +28,7 @@ jobs:
           name: "System setup: Install [bash] [curl] [jq] [apt-transport-https] [ca-certificates]"
           command: |
                     echo "Install [bash] [curl] [jq] [apt-transport-https] [ca-certificates]"
-                    sudo apt-get update -y && sudo apt-get install -y bash curl jq apt-transport-https ca-certificates ip-utils
+                    sudo apt-get update -y && sudo apt-get install -y bash curl jq apt-transport-https ca-certificates iputils
       - run:
           name: "Checking Pipeline environment variables"
           command: |
