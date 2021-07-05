@@ -274,6 +274,20 @@ workflows:
       - package_bundle:
           requires:
             - maven_n_git_release
+
+      - gravitee/d_standalone_release_qa:
+          name: maven_n_git_release
+          requires:
+            - release_secrets_resolution
+          dry_run: true
+          maven_profile_id: << pipeline.parameters.maven_profile_id >>
+          s3_bucket_name: << pipeline.parameters.s3_bucket_name >>
+          # container_gun_image_org: 'circleci'
+          # container_gun_image_name: 'openjdk'
+          # container_gun_image_tag: '11.0.3-jdk-stretch'
+          container_size: 'large' 
+
+
   standalone_release_dry_run:
     when:
       and:
@@ -297,6 +311,18 @@ workflows:
       - package_bundle:
           requires:
             - maven_n_git_release
+
+      - gravitee/d_standalone_release_qa:
+          name: maven_n_git_release
+          requires:
+            - release_secrets_resolution
+          dry_run: true
+          maven_profile_id: << pipeline.parameters.maven_profile_id >>
+          s3_bucket_name: << pipeline.parameters.s3_bucket_name >>
+          # container_gun_image_org: 'circleci'
+          # container_gun_image_name: 'openjdk'
+          # container_gun_image_tag: '11.0.3-jdk-stretch'
+          container_size: 'large' 
 
   standalone_nexus_staging:
     # ---
