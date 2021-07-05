@@ -276,7 +276,7 @@ workflows:
             - maven_n_git_release
 
       - gravitee/d_standalone_release_qa:
-          name: maven_n_git_release
+          name: maven_n_git_release_qa
           requires:
             - release_secrets_resolution
           dry_run: true
@@ -313,7 +313,7 @@ workflows:
             - maven_n_git_release
 
       - gravitee/d_standalone_release_qa:
-          name: maven_n_git_release
+          name: maven_n_git_release_qa
           requires:
             - release_secrets_resolution
           dry_run: true
