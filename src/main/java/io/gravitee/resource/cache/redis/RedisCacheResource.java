@@ -16,12 +16,13 @@
 package io.gravitee.resource.cache.redis;
 
 import io.gravitee.gateway.api.ExecutionContext;
-import io.gravitee.resource.cache.api.Cache;
+import io.gravitee.node.api.cache.Cache;
 import io.gravitee.resource.cache.api.CacheResource;
 import io.gravitee.resource.cache.redis.configuration.HostAndPort;
 import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfiguration;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +40,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class RedisCacheResource extends CacheResource<RedisCacheResourceConfiguration> {
+public class RedisCacheResource<K, V> extends CacheResource<K, V, RedisCacheResourceConfiguration> {
 
     private final Logger logger = LoggerFactory.getLogger(RedisCacheResource.class);
     private final StringRedisSerializer stringSerializer = new StringRedisSerializer();
@@ -69,14 +70,14 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     }
 
     @Override
-    public Cache getCache(ExecutionContext executionContext) {
-        return new RedisDelegate(
-            this.redisCacheManager.getCache("gravitee:"),
+    public Cache<K, V> getCache(ExecutionContext executionContext) {
+        io.gravitee.node.cache.redis.RedisCacheManager cacheManager = new io.gravitee.node.cache.redis.RedisCacheManager(
+            this.redisCacheManager,
             executionContext,
             stringSerializer,
-            (int) configuration().getTimeToLiveSeconds(),
             configuration().isReleaseCache()
         );
+        return cacheManager.getCache("gravitee:", configuration().getTimeToLiveSeconds(), TimeUnit.SECONDS);
     }
 
     private LettucePoolingClientConfiguration buildLettuceClientConfiguration() {
