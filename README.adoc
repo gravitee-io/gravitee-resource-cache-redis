@@ -3,7 +3,7 @@
 ifdef::env-github[]
 image:https://img.shields.io/badge/License-Apache%202.0-blue.svg["License", link="https://github.com/gravitee-io/gravitee-resource-cache-redis/blob/master/LICENSE"]
 image:https://circleci.com/gh/gravitee-io/gravitee-resource-cache-redis.svg?style=svg["CircleCI", link="https://circleci.com/gh/gravitee-io/gravitee-resource-cache-redis"]
-image:https://badges.gitter.im/Join Chat.svg["Gitter", link="https://gitter.im/gravitee-io/gravitee-io?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge"]
+image:https://f.hubspotusercontent40.net/hubfs/7600448/gravitee-github-button.jpg["Join the community forum", link="https://community.gravitee.io?utm_source=readme", height=20]
 endif::[]
 
 == Description
