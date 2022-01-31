@@ -40,7 +40,7 @@
         <gravitee-resource-api.version>1.1.0</gravitee-resource-api.version>
         <gravitee-resource-cache-provider-api.version>1.1.0</gravitee-resource-cache-provider-api.version>
         <lettuce.version>5.3.4.RELEASE</lettuce.version>
-        <maven-assembly-plugin.version>2.5.5</maven-assembly-plugin.version>
+        <maven-assembly-plugin.version>2.6</maven-assembly-plugin.version>
         <spring-data-redis.version>2.3.4.RELEASE</spring-data-redis.version>
     </properties>
 
