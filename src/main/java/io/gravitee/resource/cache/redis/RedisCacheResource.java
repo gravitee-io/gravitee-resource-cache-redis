@@ -15,6 +15,8 @@
  */
 package io.gravitee.resource.cache.redis;
 
+import static java.lang.Boolean.TRUE;
+
 import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.CacheResource;
@@ -94,8 +96,8 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
 
     public RedisConnectionFactory getConnectionFactory() {
         final LettuceConnectionFactory lettuceConnectionFactory;
-
-        if (configuration().isSentinelMode()) {
+        Boolean hasSentinelEnabled = configuration().getSentinel().isEnabled();
+        if (hasSentinelEnabled.equals(TRUE) || (hasSentinelEnabled == null && configuration().isSentinelMode())) {
             // Sentinels + Redis master / replicas
             List<HostAndPort> sentinelNodes = configuration().getSentinel().getNodes();
 

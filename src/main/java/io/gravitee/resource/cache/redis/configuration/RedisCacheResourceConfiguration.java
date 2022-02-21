@@ -30,8 +30,11 @@ public class RedisCacheResourceConfiguration implements ResourceConfiguration {
     private long timeout = 2000;
     private boolean releaseCache = false;
     private boolean useSsl = true;
+
+    @Deprecated
     private boolean sentinelMode = false;
-    private HostAndPort standalone = new HostAndPort();
+
+    private RedisStandaloneConfiguration standalone = new RedisStandaloneConfiguration();
     private RedisSentinelConfiguration sentinel = new RedisSentinelConfiguration();
 
     public String getName() {
@@ -90,10 +93,12 @@ public class RedisCacheResourceConfiguration implements ResourceConfiguration {
         this.useSsl = useSsl;
     }
 
+    @Deprecated
     public boolean isSentinelMode() {
         return sentinelMode;
     }
 
+    @Deprecated
     public void setSentinelMode(boolean sentinelMode) {
         this.sentinelMode = sentinelMode;
     }
@@ -102,7 +107,7 @@ public class RedisCacheResourceConfiguration implements ResourceConfiguration {
         return standalone;
     }
 
-    public void setStandalone(HostAndPort standalone) {
+    public void setStandalone(RedisStandaloneConfiguration standalone) {
         this.standalone = standalone;
     }
 
