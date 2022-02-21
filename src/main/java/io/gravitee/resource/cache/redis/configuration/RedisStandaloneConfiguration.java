@@ -15,19 +15,13 @@
  */
 package io.gravitee.resource.cache.redis.configuration;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class RedisSentinelConfiguration {
+public class RedisStandaloneConfiguration extends HostAndPort {
 
-    private Boolean enabled;
-    private String masterId;
-    private String password;
-    private List<HostAndPort> nodes = new ArrayList();
+    private Boolean enabled = true;
 
     public Boolean isEnabled() {
         return enabled;
@@ -35,29 +29,5 @@ public class RedisSentinelConfiguration {
 
     public void setEnabled(Boolean enabled) {
         this.enabled = enabled;
-    }
-
-    public String getMasterId() {
-        return masterId;
-    }
-
-    public void setMasterId(String masterId) {
-        this.masterId = masterId;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public List<HostAndPort> getNodes() {
-        return nodes;
-    }
-
-    public void setNodes(List<HostAndPort> nodes) {
-        this.nodes = nodes;
     }
 }
