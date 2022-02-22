@@ -35,7 +35,7 @@
     <description>The resource is used to maintain a cache and link it to the API lifecycle. Redis provides a different range of persistence options, it means that the cache can keep data after reboot.</description>
 
     <properties>
-        <commons-pool2.version>2.9.0</commons-pool2.version>
+        <commons-pool2.version>2.11.0</commons-pool2.version>
         <gravitee-gateway-api.version>1.26.0</gravitee-gateway-api.version>
         <gravitee-resource-api.version>1.1.0</gravitee-resource-api.version>
         <gravitee-resource-cache-provider-api.version>1.1.0</gravitee-resource-cache-provider-api.version>
