@@ -34,7 +34,8 @@ import org.springframework.data.redis.connection.RedisSentinelConfiguration;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettucePoolingClientConfiguration;
-import org.springframework.data.redis.serializer.RedisSerializationContext;
+import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
@@ -44,7 +45,8 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 public class RedisCacheResource extends CacheResource<RedisCacheResourceConfiguration> {
 
     private final Logger logger = LoggerFactory.getLogger(RedisCacheResource.class);
-    private final StringRedisSerializer stringSerializer = new StringRedisSerializer();
+    private final RedisSerializer keySerializer = new StringRedisSerializer();
+    private final RedisSerializer valueSerializer = new JdkSerializationRedisSerializer();
     private RedisCacheManager redisCacheManager;
 
     @Override
@@ -55,8 +57,6 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
         try {
             RedisCacheConfiguration conf = RedisCacheConfiguration
                 .defaultCacheConfig()
-                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(stringSerializer))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(stringSerializer))
                 .entryTtl(Duration.ofSeconds(configuration().getTimeToLiveSeconds()));
 
             this.redisCacheManager = RedisCacheManager.builder(getConnectionFactory()).cacheDefaults(conf).build();
@@ -75,7 +75,8 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
         return new RedisDelegate(
             this.redisCacheManager.getCache("gravitee:"),
             executionContext,
-            stringSerializer,
+            keySerializer,
+            valueSerializer,
             (int) configuration().getTimeToLiveSeconds(),
             configuration().isReleaseCache()
         );

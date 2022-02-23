@@ -22,6 +22,7 @@ import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.cache.RedisCacheWriter;
+import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializer;
 
 /**
@@ -34,21 +35,24 @@ public class RedisDelegate implements Cache {
 
     private final org.springframework.cache.Cache cache;
     private final int timeToLiveSeconds;
-    private final RedisSerializer serializer;
+    private final RedisSerializer keySerializer;
+    private final RedisSerializer valueSerializer;
     private boolean releaseCache;
     private ExecutionContext executionContext;
 
     public RedisDelegate(
         org.springframework.cache.Cache cache,
         ExecutionContext executionContext,
-        RedisSerializer serializer,
+        RedisSerializer keySerializer,
+        RedisSerializer valueSerializer,
         int timeToLiveSeconds,
         boolean releaseCache
     ) {
         this.cache = cache;
         this.executionContext = executionContext;
         this.timeToLiveSeconds = timeToLiveSeconds;
-        this.serializer = serializer;
+        this.keySerializer = keySerializer;
+        this.valueSerializer = valueSerializer;
         this.releaseCache = releaseCache;
     }
 
@@ -69,7 +73,7 @@ public class RedisDelegate implements Cache {
             RedisCacheWriter redisCacheWriter = (RedisCacheWriter) this.getNativeCache();
             byte[] bytes = redisCacheWriter.get(this.getName(), buildKey(key));
             if (bytes != null) {
-                Object value = this.serializer.deserialize(bytes);
+                Object value = valueSerializer.deserialize(bytes);
                 return new Element() {
                     @Override
                     public Object key() {
@@ -100,7 +104,7 @@ public class RedisDelegate implements Cache {
             }
             RedisCacheWriter redisCacheWriter = (RedisCacheWriter) this.getNativeCache();
 
-            redisCacheWriter.put(getName(), buildKey(element.key()), this.serializer.serialize(element.value()), Duration.ofSeconds(ttl));
+            redisCacheWriter.put(getName(), buildKey(element.key()), valueSerializer.serialize(element.value()), Duration.ofSeconds(ttl));
         } catch (Throwable e) {
             logger.error("Cannot put element in cache", e);
         }
@@ -111,7 +115,7 @@ public class RedisDelegate implements Cache {
         if (this.releaseCache) {
             allKey += ":" + this.executionContext.getAttribute(ExecutionContext.ATTR_API_DEPLOYED_AT);
         }
-        return this.serializer.serialize(allKey);
+        return this.keySerializer.serialize(allKey);
     }
 
     @Override
