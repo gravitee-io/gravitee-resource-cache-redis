@@ -17,13 +17,14 @@ package io.gravitee.resource.cache.redis;
 
 import static java.lang.Boolean.TRUE;
 
-import io.gravitee.gateway.api.ExecutionContext;
+import io.gravitee.gateway.reactive.api.context.ExecutionContext;
 import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.CacheResource;
 import io.gravitee.resource.cache.redis.configuration.HostAndPort;
 import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfiguration;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,10 +72,19 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     }
 
     @Override
-    public Cache getCache(ExecutionContext executionContext) {
+    public Cache getCache(ExecutionContext ctx) {
+        return getCache(ctx.getAttributes());
+    }
+
+    @Override
+    public Cache getCache(io.gravitee.gateway.api.ExecutionContext executionContext) {
+        return getCache(executionContext.getAttributes());
+    }
+
+    private Cache getCache(Map<String, Object> contextAttributes) {
         return new RedisDelegate(
             this.redisCacheManager.getCache("gravitee:"),
-            executionContext,
+            contextAttributes,
             stringSerializer,
             (int) configuration().getTimeToLiveSeconds(),
             configuration().isReleaseCache()
