@@ -19,6 +19,7 @@ import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.Element;
 import java.time.Duration;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.cache.RedisCacheWriter;
@@ -35,18 +36,18 @@ public class RedisDelegate implements Cache {
     private final org.springframework.cache.Cache cache;
     private final int timeToLiveSeconds;
     private final RedisSerializer serializer;
+    private final Map<String, Object> contextAttributes;
     private boolean releaseCache;
-    private ExecutionContext executionContext;
 
     public RedisDelegate(
         org.springframework.cache.Cache cache,
-        ExecutionContext executionContext,
+        Map<String, Object> contextAttributes,
         RedisSerializer serializer,
         int timeToLiveSeconds,
         boolean releaseCache
     ) {
         this.cache = cache;
-        this.executionContext = executionContext;
+        this.contextAttributes = contextAttributes;
         this.timeToLiveSeconds = timeToLiveSeconds;
         this.serializer = serializer;
         this.releaseCache = releaseCache;
@@ -109,7 +110,7 @@ public class RedisDelegate implements Cache {
     private byte[] buildKey(Object key) {
         String allKey = this.getName() + key;
         if (this.releaseCache) {
-            allKey += ":" + this.executionContext.getAttribute(ExecutionContext.ATTR_API_DEPLOYED_AT);
+            allKey += ":" + contextAttributes.get(ExecutionContext.ATTR_API_DEPLOYED_AT);
         }
         return this.serializer.serialize(allKey);
     }
@@ -122,9 +123,5 @@ public class RedisDelegate implements Cache {
     @Override
     public void clear() {
         cache.clear();
-    }
-
-    public void setExecutionContext(ExecutionContext executionContext) {
-        this.executionContext = executionContext;
     }
 }

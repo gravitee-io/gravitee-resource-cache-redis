@@ -118,7 +118,7 @@
         "masterId": {
           "title": "Master",
           "description": "The sentinel master id",
-          "type": "String",
+          "type": "string",
           "default": "sentinel-master",
           "x-schema-form": {
             "hidden": [
@@ -133,7 +133,7 @@
         "password": {
           "title": "Sentinel password",
           "description": "The sentinel password",
-          "type": "String",
+          "type": "string",
           "writeOnly": true,
           "x-schema-form": {
             "hidden": [
