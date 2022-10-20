@@ -24,6 +24,7 @@ import io.gravitee.resource.api.ResourceConfiguration;
 public class RedisCacheResourceConfiguration implements ResourceConfiguration {
 
     private String name = "my-redis-cache";
+    public static final String KEY_SEPARATOR = ":";
     private int maxTotal = 8;
     private String password;
     private long timeToLiveSeconds = 0;

@@ -15,28 +15,15 @@
  */
 package io.gravitee.resource.cache.redis;
 
-import static java.lang.Boolean.TRUE;
-
+import io.gravitee.common.utils.UUID;
 import io.gravitee.gateway.jupiter.api.context.GenericExecutionContext;
 import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.CacheResource;
-import io.gravitee.resource.cache.redis.configuration.HostAndPort;
 import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfiguration;
-import java.time.Duration;
-import java.util.List;
+import io.vertx.core.Vertx;
 import java.util.Map;
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.redis.cache.RedisCacheConfiguration;
-import org.springframework.data.redis.cache.RedisCacheManager;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.connection.RedisSentinelConfiguration;
-import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
-import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
-import org.springframework.data.redis.connection.lettuce.LettucePoolingClientConfiguration;
-import org.springframework.data.redis.serializer.RedisSerializationContext;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
@@ -45,30 +32,24 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 public class RedisCacheResource extends CacheResource<RedisCacheResourceConfiguration> {
 
     private final Logger logger = LoggerFactory.getLogger(RedisCacheResource.class);
-    private final StringRedisSerializer stringSerializer = new StringRedisSerializer();
-    private RedisCacheManager redisCacheManager;
+    private RedisClient redisClient;
+    private String cacheId;
 
     @Override
     protected void doStart() throws Exception {
         super.doStart();
         logger.debug("Create redis cache manager");
+        RedisCacheResourceConfiguration configuration = configuration();
+        this.cacheId = configuration.getName() + RedisCacheResourceConfiguration.KEY_SEPARATOR + UUID.random().toString();
 
-        try {
-            RedisCacheConfiguration conf = RedisCacheConfiguration
-                .defaultCacheConfig()
-                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(stringSerializer))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(stringSerializer))
-                .entryTtl(Duration.ofSeconds(configuration().getTimeToLiveSeconds()));
-
-            this.redisCacheManager = RedisCacheManager.builder(getConnectionFactory()).cacheDefaults(conf).build();
-        } catch (Throwable e) {
-            logger.error("Cannot create redis cache manager", e);
-        }
+        // TODO - Kamiel - 17/10/2022: Clarify how to get Vertx
+        RedisConnectionFactory redisConnectionFactory = new RedisConnectionFactory(Vertx.vertx(), configuration);
+        this.redisClient = redisConnectionFactory.getRedisClient();
     }
 
     @Override
     public String keySeparator() {
-        return ":";
+        return RedisCacheResourceConfiguration.KEY_SEPARATOR;
     }
 
     @Override
@@ -82,57 +63,12 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     }
 
     private Cache getCache(Map<String, Object> contextAttributes) {
-        return new RedisDelegate(
-            this.redisCacheManager.getCache("gravitee:"),
+        return new RedisCache(
+            this.redisClient,
+            this.cacheId,
             contextAttributes,
-            stringSerializer,
             (int) configuration().getTimeToLiveSeconds(),
             configuration().isReleaseCache()
         );
-    }
-
-    private LettucePoolingClientConfiguration buildLettuceClientConfiguration() {
-        final LettucePoolingClientConfiguration.LettucePoolingClientConfigurationBuilder builder = LettucePoolingClientConfiguration.builder();
-        builder.commandTimeout(Duration.ofMillis(configuration().getTimeout()));
-        if (configuration().isUseSsl()) {
-            builder.useSsl();
-        }
-        GenericObjectPoolConfig poolConfig = new GenericObjectPoolConfig();
-        poolConfig.setMaxTotal(configuration().getMaxTotal());
-        poolConfig.setBlockWhenExhausted(false);
-        builder.poolConfig(poolConfig);
-        return builder.build();
-    }
-
-    public RedisConnectionFactory getConnectionFactory() {
-        final LettuceConnectionFactory lettuceConnectionFactory;
-        Boolean hasSentinelEnabled = configuration().getSentinel().isEnabled();
-        if (hasSentinelEnabled.equals(TRUE) || (hasSentinelEnabled == null && configuration().isSentinelMode())) {
-            // Sentinels + Redis master / replicas
-            List<HostAndPort> sentinelNodes = configuration().getSentinel().getNodes();
-
-            RedisSentinelConfiguration sentinelConfiguration = new RedisSentinelConfiguration();
-            sentinelConfiguration.master(configuration().getSentinel().getMasterId());
-            // Parsing and registering nodes
-            sentinelNodes.forEach(hostAndPort -> sentinelConfiguration.sentinel(hostAndPort.getHost(), hostAndPort.getPort()));
-            // Sentinel Password
-            sentinelConfiguration.setSentinelPassword(configuration().getSentinel().getPassword());
-            // Redis Password
-            sentinelConfiguration.setPassword(configuration().getPassword());
-
-            lettuceConnectionFactory = new LettuceConnectionFactory(sentinelConfiguration, buildLettuceClientConfiguration());
-        } else {
-            // Standalone Redis
-            RedisStandaloneConfiguration standaloneConfiguration = new RedisStandaloneConfiguration();
-            standaloneConfiguration.setHostName(configuration().getStandalone().getHost());
-            standaloneConfiguration.setPort(configuration().getStandalone().getPort());
-            standaloneConfiguration.setPassword(configuration().getPassword());
-
-            lettuceConnectionFactory = new LettuceConnectionFactory(standaloneConfiguration, buildLettuceClientConfiguration());
-        }
-
-        lettuceConnectionFactory.afterPropertiesSet();
-
-        return lettuceConnectionFactory;
     }
 }

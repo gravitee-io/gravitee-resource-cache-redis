@@ -27,7 +27,7 @@ public class RedisSentinelConfiguration {
     private Boolean enabled;
     private String masterId;
     private String password;
-    private List<HostAndPort> nodes = new ArrayList();
+    private List<HostAndPort> nodes = new ArrayList<>();
 
     public Boolean isEnabled() {
         return enabled;

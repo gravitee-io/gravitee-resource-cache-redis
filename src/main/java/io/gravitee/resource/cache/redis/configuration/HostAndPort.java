@@ -15,6 +15,8 @@
  */
 package io.gravitee.resource.cache.redis.configuration;
 
+import org.springframework.util.StringUtils;
+
 /**
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
  * @author GraviteeSource Team
@@ -24,6 +26,8 @@ public class HostAndPort {
     private String host = "localhost";
 
     private int port = 6379;
+
+    private String password;
 
     public String getHost() {
         return host;
@@ -39,5 +43,21 @@ public class HostAndPort {
 
     public void setPort(int port) {
         this.port = port;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String toConnectionString() {
+        if (StringUtils.hasText(password)) {
+            return "redis://:" + password + '@' + host + ':' + port;
+        }
+
+        return "redis://" + host + ':' + port;
     }
 }
