@@ -17,7 +17,7 @@ package io.gravitee.resource.cache.redis;
 
 import static java.lang.Boolean.TRUE;
 
-import io.gravitee.gateway.jupiter.api.context.GenericExecutionContext;
+import io.gravitee.gateway.reactive.api.context.GenericExecutionContext;
 import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.CacheResource;
 import io.gravitee.resource.cache.redis.configuration.HostAndPort;
