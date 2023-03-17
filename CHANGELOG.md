@@ -1,3 +1,15 @@
+# [1.3.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/1.2.0...1.3.0) (2023-03-17)
+
+
+### Bug Fixes
+
+* **deps:** bump dependencies ([7a18ca5](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/7a18ca58294bb95577986a1319422e8e1dc694a5))
+
+
+### Features
+
+* rename 'jupiter' package in 'reactive' ([39e045c](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/39e045c85d43af4b3f10305d5dd24752f3da9e05))
+
 # [1.3.0-alpha.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/1.2.0...1.3.0-alpha.1) (2023-03-13)
 
 
