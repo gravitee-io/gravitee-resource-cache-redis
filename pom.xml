@@ -24,7 +24,7 @@
     <parent>
         <groupId>io.gravitee</groupId>
         <artifactId>gravitee-parent</artifactId>
-        <version>20.3</version>
+        <version>21.0.0</version>
     </parent>
 
     <groupId>io.gravitee.resource</groupId>
@@ -35,11 +35,11 @@
     <description>The resource is used to maintain a cache and link it to the API lifecycle. Redis provides a different range of persistence options, it means that the cache can keep data after reboot.</description>
 
     <properties>
-        <gravitee-bom.version>2.1</gravitee-bom.version>
+        <gravitee-bom.version>4.0.0</gravitee-bom.version>
         <commons-pool2.version>2.9.0</commons-pool2.version>
-        <gravitee-gateway-api.version>2.1.0-alpha.18</gravitee-gateway-api.version>
+        <gravitee-gateway-api.version>2.1.0</gravitee-gateway-api.version>
         <gravitee-resource-api.version>1.1.0</gravitee-resource-api.version>
-        <gravitee-resource-cache-provider-api.version>1.4.0-alpha.1</gravitee-resource-cache-provider-api.version>
+        <gravitee-resource-cache-provider-api.version>1.4.0</gravitee-resource-cache-provider-api.version>
         <lettuce.version>5.3.4.RELEASE</lettuce.version>
         <maven-assembly-plugin.version>2.6</maven-assembly-plugin.version>
         <spring-data-redis.version>2.3.4.RELEASE</spring-data-redis.version>
