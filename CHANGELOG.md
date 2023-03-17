@@ -1,3 +1,10 @@
+# [1.3.0-alpha.2](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/1.3.0-alpha.1...1.3.0-alpha.2) (2023-03-17)
+
+
+### Bug Fixes
+
+* **deps:** bump dependencies ([5063b8e](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/5063b8ed0b4ad30eb5259ab784f4d07b9e774d3b))
+
 # [1.3.0-alpha.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/1.2.0...1.3.0-alpha.1) (2023-03-13)
 
 
