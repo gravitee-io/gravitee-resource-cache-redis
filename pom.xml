@@ -36,7 +36,7 @@
 
     <properties>
         <gravitee-bom.version>4.0.0</gravitee-bom.version>
-        <commons-pool2.version>2.9.0</commons-pool2.version>
+        <commons-pool2.version>2.11.1</commons-pool2.version>
         <gravitee-gateway-api.version>2.1.0</gravitee-gateway-api.version>
         <gravitee-resource-api.version>1.1.0</gravitee-resource-api.version>
         <gravitee-resource-cache-provider-api.version>1.4.0</gravitee-resource-cache-provider-api.version>
