@@ -1,24 +1,18 @@
 {
-  "type" : "object",
-  "id" : "urn:jsonschema:io:gravitee:resource:cache.redis:configuration:RedisCacheResourceConfiguration",
-  "properties" : {
-    "name" : {
-      "title": "Cache name",
-      "description": "The name of the cache resource.",
-      "type" : "string",
-      "default": "my-redis-cache"
-    },
+  "type": "object",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
     "releaseCache": {
       "title": "Release the cache when API is stopped?",
       "description": "If enabled, the resource will release the cache. If not, you will have to manage it by yourself on your Redis server.",
       "type": "boolean",
       "default": false
     },
-    "maxTotal" : {
+    "maxTotal": {
       "title": "Max total",
       "description": "The maximum number of connections that are supported by the pool.",
-      "type" : "integer",
-      "default": "8"
+      "type": "integer",
+      "default": 8
     },
     "password": {
       "title": "Password",
@@ -28,7 +22,7 @@
     },
     "timeToLiveSeconds": {
       "title": "Time to live (in seconds)",
-      "type" : "integer",
+      "type": "integer",
       "description": "The maximum number of seconds an element can exist in the cache regardless of use. The element expires at this limit and will no longer be returned from the cache. The default value is 0, which means no timeToLive (TTL) eviction takes place (infinite lifetime).",
       "default": 0,
       "minimum": 0
@@ -48,149 +42,121 @@
     },
     "standalone": {
       "type": "object",
-      "title": "Standalone",
-      "properties": {
-        "enabled": {
-          "type": "boolean",
-          "title": "Use standalone mode",
-          "default": true,
-          "x-schema-form": {
-            "disabled": [
-              {
-                "$eq": {
-                  "sentinel.enabled": true
-                }
-              }
-            ]
-          }
-        },
-        "host" : {
-          "title": "Host",
-          "description": "The host of the instance",
-          "type" : "string",
-          "default": "localhost",
-          "x-schema-form": {
-            "disabled": [
-              {
-                "$eq": {
-                  "sentinel.enabled": true
-                }
-              }
-            ]
-          }
-        },
-        "port" : {
-          "title": "Port",
-          "description": "The port of the instance",
-          "type" : "integer",
-          "default": 6379,
-          "x-schema-form": {
-            "disabled": [
-              {
-                "$eq": {
-                  "sentinel.enabled": true
-                }
-              }
-            ]
-          }
-        }
-      },
       "oneOf": [
         {
-          "properties": { "enabled": { "const": false } }
+          "title": "Configure standalone",
+          "properties": {
+            "enabled": {
+              "const": true
+            },
+            "host": {
+              "title": "Host",
+              "description": "The host of the instance",
+              "type": "string",
+              "default": "localhost"
+            },
+            "port": {
+              "title": "Port",
+              "description": "The port of the instance",
+              "type": "integer",
+              "default": 6379
+            }
+          },
+          "required": [
+            "host",
+            "port"
+          ]
         },
         {
-          "properties": { "enabled": { "const": true } },
-          "required": ["host", "port"]
+          "title": "Standalone disabled",
+          "properties": {
+            "enabled": {
+              "const": false
+            }
+          }
         }
-      ]
+      ],
+      "default": {
+        "enabled": true
+      },
+      "gioConfig": {
+        "disableIf": {
+          "$eq": {
+            "value.sentinel.enabled": true
+          }
+        }
+      }
     },
     "sentinel": {
-      "type" : "object",
-      "title": "Sentinel",
-      "properties" : {
-        "enabled": {
-          "type": "boolean",
-          "title": "Use sentinel mode",
-          "description": "Sentinel provides high availability for Redis. In practical terms this means that using Sentinel you can create a Redis deployment that resists without human intervention certain kinds of failures.",
-          "default": false
-        },
-        "masterId": {
-          "title": "Master",
-          "description": "The sentinel master id",
-          "type": "string",
-          "default": "sentinel-master",
-          "x-schema-form": {
-            "hidden": [
-              {
-                "$eq": {
-                  "sentinel.enabled": false
-                }
-              }
-            ]
-          }
-        },
-        "password": {
-          "title": "Sentinel password",
-          "description": "The sentinel password",
-          "type": "string",
-          "writeOnly": true,
-          "x-schema-form": {
-            "hidden": [
-              {
-                "$eq": {
-                  "sentinel.enabled": false
-                }
-              }
-            ]
-          }
-        },
-        "nodes" : {
-          "type" : "array",
-          "title": "Sentinel nodes",
-          "items" : {
-            "type" : "object",
-            "title": "Node",
-            "properties" : {
-              "host" : {
-                "title": "The host of node",
-                "type" : "string",
-                "default": "localhost"
-              },
-              "port" : {
-                "title": "The port of node",
-                "type" : "integer",
-                "default": 26379
-              }
-            },
-            "required": [
-              "host",
-              "port"
-            ]
-          },
-          "x-schema-form": {
-            "hidden": [
-              {
-                "$eq": {
-                  "sentinel.enabled": false
-                }
-              }
-            ]
-          }
-        }
-      },
+      "type": "object",
       "oneOf": [
         {
-          "properties": { "enabled": { "const": false } }
+          "title": "Configure sentinel",
+          "properties": {
+            "enabled": {
+              "const": true
+            },
+            "masterId": {
+              "title": "Master",
+              "description": "The sentinel master id",
+              "type": "string",
+              "default": "sentinel-master"
+            },
+            "password": {
+              "title": "Sentinel password",
+              "description": "The sentinel password",
+              "type": "string",
+              "writeOnly": true
+            },
+            "nodes": {
+              "type": "array",
+              "title": "Sentinel nodes",
+              "items": {
+                "type": "object",
+                "title": "Node",
+                "properties": {
+                  "host": {
+                    "title": "The host of node",
+                    "type": "string",
+                    "default": "localhost"
+                  },
+                  "port": {
+                    "title": "The port of node",
+                    "type": "integer",
+                    "default": 26379
+                  }
+                },
+                "required": [
+                  "host",
+                  "port"
+                ]
+              },
+              "default": [
+                {
+                  "host": "localhost",
+                  "port": 26379
+                }
+              ]
+            }
+          },
+          "required": [
+            "masterId",
+            "nodes"
+          ]
         },
         {
-          "properties": { "enabled": { "const": true } },
-          "required": ["masterId", "nodes"]
+          "title": "Sentinel disabled",
+          "description": "Sentinel provides high availability for Redis. In practical terms this means that using Sentinel you can create a Redis deployment that resists without human intervention certain kinds of failures.",
+          "properties": {
+            "enabled": {
+              "const": false
+            }
+          }
         }
-      ]
+      ],
+      "default": {
+        "enabled": false
+      }
     }
-  },
-  "required": [
-    "name"
-  ]
+  }
 }
