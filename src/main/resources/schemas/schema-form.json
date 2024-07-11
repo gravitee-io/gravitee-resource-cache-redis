@@ -2,12 +2,6 @@
   "type": "object",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "properties": {
-    "name": {
-      "title": "Cache name",
-      "description": "The name of the cache resource.",
-      "type": "string",
-      "default": "my-redis-cache"
-    },
     "releaseCache": {
       "title": "Release the cache when API is stopped?",
       "description": "If enabled, the resource will release the cache. If not, you will have to manage it by yourself on your Redis server.",
@@ -164,8 +158,5 @@
         "enabled": false
       }
     }
-  },
-  "required": [
-    "name"
-  ]
+  }
 }
