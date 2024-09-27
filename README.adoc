@@ -17,6 +17,15 @@ This cache is responsible to store HTTP response from the backend to avoid subse
 
 Current implementation of the cache resource is based on https://redis.io/[Redis].
 
+
+== Compatibility with APIM
+
+|===
+| Plugin version | APIM version
+
+| 1.5.0            | 4.0 to 4.4
+|===
+
 == Configuration
 
 You can configure the resource with the following options :
