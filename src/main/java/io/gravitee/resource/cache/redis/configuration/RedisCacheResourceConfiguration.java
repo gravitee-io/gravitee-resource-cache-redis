@@ -23,6 +23,7 @@ import io.gravitee.resource.api.ResourceConfiguration;
  */
 public class RedisCacheResourceConfiguration implements ResourceConfiguration {
 
+    private String name = "my-redis-cache";
     private int maxTotal = 8;
     private String password;
     private long timeToLiveSeconds = 0;
@@ -35,6 +36,14 @@ public class RedisCacheResourceConfiguration implements ResourceConfiguration {
 
     private RedisStandaloneConfiguration standalone = new RedisStandaloneConfiguration();
     private RedisSentinelConfiguration sentinel = new RedisSentinelConfiguration();
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 
     public int getMaxTotal() {
         return maxTotal;
