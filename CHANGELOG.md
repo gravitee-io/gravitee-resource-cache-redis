@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/1.4.0...1.5.0) (2024-09-27)
+
+
+### Features
+
+* **release:** compatibility issue 1.4.0 introduced a breaking change ([0200cb4](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/0200cb4371d89ca4b994a49e29580cb229ae2a9e))
+
 # [1.4.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/1.3.0...1.4.0) (2024-07-12)
 
 
