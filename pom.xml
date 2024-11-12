@@ -29,7 +29,7 @@
 
     <groupId>io.gravitee.resource</groupId>
     <artifactId>gravitee-resource-cache-redis</artifactId>
-    <version>2.0.0</version>
+    <version>3.0.0-APIM-7152-use-latest-cache-provider-api-SNAPSHOT</version>
 
     <name>Gravitee.io APIM - Resource - Cache - Redis</name>
     <description>The resource is used to maintain a cache and link it to the API lifecycle. Redis provides a different range of persistence options, it means that the cache can keep data after reboot.</description>
@@ -37,9 +37,9 @@
     <properties>
         <gravitee-bom.version>8.1.16</gravitee-bom.version>
         <commons-pool2.version>2.9.0</commons-pool2.version>
-        <gravitee-gateway-api.version>2.1.0</gravitee-gateway-api.version>
+        <gravitee-gateway-api.version>3.9.0-alpha.11</gravitee-gateway-api.version>
         <gravitee-resource-api.version>1.1.0</gravitee-resource-api.version>
-        <gravitee-resource-cache-provider-api.version>1.4.0</gravitee-resource-cache-provider-api.version>
+        <gravitee-resource-cache-provider-api.version>2.0.0</gravitee-resource-cache-provider-api.version>
         <lettuce.version>5.3.4.RELEASE</lettuce.version>
         <spring-data-redis.version>2.3.4.RELEASE</spring-data-redis.version>
 
