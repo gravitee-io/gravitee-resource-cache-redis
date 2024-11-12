@@ -18,6 +18,7 @@ package io.gravitee.resource.cache.redis;
 import static java.lang.Boolean.TRUE;
 
 import io.gravitee.gateway.reactive.api.context.GenericExecutionContext;
+import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.CacheResource;
 import io.gravitee.resource.cache.redis.configuration.HostAndPort;
@@ -73,6 +74,11 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
 
     @Override
     public Cache getCache(GenericExecutionContext ctx) {
+        return getCache(ctx.getAttributes());
+    }
+
+    @Override
+    public Cache getCache(BaseExecutionContext ctx) {
         return getCache(ctx.getAttributes());
     }
 
