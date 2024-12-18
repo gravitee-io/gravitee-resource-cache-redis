@@ -20,8 +20,8 @@ import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.Element;
 import java.time.Duration;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.serializer.RedisSerializer;
 
@@ -29,29 +29,15 @@ import org.springframework.data.redis.serializer.RedisSerializer;
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
  * @author GraviteeSource Team
  */
+@Slf4j
+@RequiredArgsConstructor
 public class RedisDelegate implements Cache {
 
-    private final Logger logger = LoggerFactory.getLogger(RedisDelegate.class);
-
     private final org.springframework.cache.Cache cache;
-    private final int timeToLiveSeconds;
-    private final RedisSerializer serializer;
     private final Map<String, Object> contextAttributes;
-    private boolean releaseCache;
-
-    public RedisDelegate(
-        org.springframework.cache.Cache cache,
-        Map<String, Object> contextAttributes,
-        RedisSerializer serializer,
-        int timeToLiveSeconds,
-        boolean releaseCache
-    ) {
-        this.cache = cache;
-        this.contextAttributes = contextAttributes;
-        this.timeToLiveSeconds = timeToLiveSeconds;
-        this.serializer = serializer;
-        this.releaseCache = releaseCache;
-    }
+    private final RedisSerializer<String> serializer;
+    private final int timeToLiveSeconds;
+    private final boolean releaseCache;
 
     @Override
     public String getName() {
@@ -65,7 +51,7 @@ public class RedisDelegate implements Cache {
 
     @Override
     public Element get(Object key) {
-        logger.debug("Find in cache {}", key);
+        log.debug("Find in cache {}", key);
         try {
             RedisCacheWriter redisCacheWriter = (RedisCacheWriter) this.getNativeCache();
             byte[] bytes = redisCacheWriter.get(this.getName(), buildKey(key));
@@ -84,16 +70,16 @@ public class RedisDelegate implements Cache {
                 };
             }
             return null;
-        } catch (Throwable e) {
-            logger.error("Cannot get element in cache", e);
+        } catch (Exception e) {
+            log.error("Cannot get element in cache", e);
         }
-        logger.debug("Not found {}", key);
+        log.debug("Not found {}", key);
         return null;
     }
 
     @Override
     public void put(Element element) {
-        logger.debug("Put in cache {}", element.key());
+        log.debug("Put in cache {}", element.key());
         try {
             int ttl = this.timeToLiveSeconds;
             if ((ttl == 0 && element.timeToLive() > 0) || (ttl > 0 && element.timeToLive() > 0 && ttl > element.timeToLive())) {
@@ -101,9 +87,14 @@ public class RedisDelegate implements Cache {
             }
             RedisCacheWriter redisCacheWriter = (RedisCacheWriter) this.getNativeCache();
 
-            redisCacheWriter.put(getName(), buildKey(element.key()), this.serializer.serialize(element.value()), Duration.ofSeconds(ttl));
-        } catch (Throwable e) {
-            logger.error("Cannot put element in cache", e);
+            redisCacheWriter.put(
+                getName(),
+                buildKey(element.key()),
+                this.serializer.serialize((String) element.value()),
+                Duration.ofSeconds(ttl)
+            );
+        } catch (Exception e) {
+            log.error("Cannot put element in cache", e);
         }
     }
 

@@ -17,15 +17,20 @@ package io.gravitee.resource.cache.redis;
 
 import static java.lang.Boolean.TRUE;
 
+import io.gravitee.gateway.api.ExecutionContext;
+import io.gravitee.gateway.reactive.api.context.DeploymentContext;
 import io.gravitee.gateway.reactive.api.context.GenericExecutionContext;
 import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.CacheResource;
 import io.gravitee.resource.cache.redis.configuration.HostAndPort;
 import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfiguration;
+import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfigurationEvaluator;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import javax.inject.Inject;
+import lombok.Setter;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,10 +54,27 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     private final StringRedisSerializer stringSerializer = new StringRedisSerializer();
     private RedisCacheManager redisCacheManager;
 
+    @Inject
+    @Setter
+    private DeploymentContext deploymentContext;
+
+    private RedisCacheResourceConfiguration configuration;
+
+    @Override
+    public RedisCacheResourceConfiguration configuration() {
+        if (configuration == null) {
+            return super.configuration();
+        }
+        return configuration;
+    }
+
     @Override
     protected void doStart() throws Exception {
         super.doStart();
         logger.debug("Create redis cache manager");
+
+        configuration =
+            new RedisCacheResourceConfigurationEvaluator(configuration()).evalNow(new ExecutionContextAdapter(deploymentContext));
 
         try {
             RedisCacheConfiguration conf = RedisCacheConfiguration
@@ -62,7 +84,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
                 .entryTtl(Duration.ofSeconds(configuration().getTimeToLiveSeconds()));
 
             this.redisCacheManager = RedisCacheManager.builder(getConnectionFactory()).cacheDefaults(conf).build();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             logger.error("Cannot create redis cache manager", e);
         }
     }
@@ -73,8 +95,9 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     }
 
     @Override
+    @Deprecated(since = "3.0", forRemoval = true)
     public Cache getCache(GenericExecutionContext ctx) {
-        return getCache(ctx.getAttributes());
+        return getCache((BaseExecutionContext) ctx);
     }
 
     @Override
@@ -83,7 +106,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     }
 
     @Override
-    public Cache getCache(io.gravitee.gateway.api.ExecutionContext executionContext) {
+    public Cache getCache(ExecutionContext executionContext) {
         return getCache(executionContext.getAttributes());
     }
 

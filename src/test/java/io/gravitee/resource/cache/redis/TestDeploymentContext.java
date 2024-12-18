@@ -13,19 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.resource.cache.redis.configuration;
+package io.gravitee.resource.cache.redis;
 
-import lombok.Getter;
-import lombok.Setter;
+import io.gravitee.el.TemplateEngine;
+import io.gravitee.gateway.reactive.api.context.DeploymentContext;
+import lombok.RequiredArgsConstructor;
 
 /**
- * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
+ * @author Benoit BORDIGONI (benoit.bordigoni at graviteesource.com)
  * @author GraviteeSource Team
  */
-@Getter
-@Setter
-public class HostAndPort {
+@RequiredArgsConstructor
+public class TestDeploymentContext implements DeploymentContext {
 
-    private String host = "localhost";
-    private int port = 6379;
+    private final TemplateEngine templateEngine;
+
+    @Override
+    public <T> T getComponent(Class<T> componentClass) {
+        return null;
+    }
+
+    @Override
+    public TemplateEngine getTemplateEngine() {
+        return this.templateEngine;
+    }
 }
