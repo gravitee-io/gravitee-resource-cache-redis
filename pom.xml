@@ -39,14 +39,22 @@
         <commons-pool2.version>2.9.0</commons-pool2.version>
         <gravitee-gateway-api.version>3.9.0</gravitee-gateway-api.version>
         <gravitee-resource-api.version>1.1.0</gravitee-resource-api.version>
+        <gravitee-secret-api.version>1.0.0</gravitee-secret-api.version>
         <gravitee-resource-cache-provider-api.version>2.0.0</gravitee-resource-cache-provider-api.version>
-        <lettuce.version>5.3.4.RELEASE</lettuce.version>
+        <gravitee-plugin.version>4.4.0</gravitee-plugin.version>
+        <gravitee-expression-language.version>4.0.0</gravitee-expression-language.version>
+
+        <commons-pool2.version>2.9.0</commons-pool2.version>
+        <lettuce.version>5.3.7.RELEASE</lettuce.version>
         <spring-data-redis.version>2.3.4.RELEASE</spring-data-redis.version>
+        <hibernate-validator.version>8.0.1.Final</hibernate-validator.version>
 
         <!-- Property used by the publication job in CI-->
         <publish-folder-path>graviteeio-apim/plugins/resources</publish-folder-path>
 
         <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
+        <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
+
     </properties>
 
     <dependencyManagement>
@@ -76,12 +84,32 @@
             <artifactId>gravitee-resource-api</artifactId>
             <version>${gravitee-resource-api.version}</version>
             <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.gravitee.common</groupId>
+                    <artifactId>gravitee-common</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
             <groupId>io.gravitee.gateway</groupId>
             <artifactId>gravitee-gateway-api</artifactId>
             <version>${gravitee-gateway-api.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.gravitee.plugin</groupId>
+            <artifactId>gravitee-plugin-annotation-processors</artifactId>
+            <version>${gravitee-plugin.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.gravitee.el</groupId>
+            <artifactId>gravitee-expression-language</artifactId>
+            <version>${gravitee-expression-language.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -95,6 +123,28 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <scope>provided</scope>
+        </dependency>
+
+        <!-- for annotation processing -->
+        <dependency>
+            <groupId>io.gravitee.secret</groupId>
+            <artifactId>gravitee-secret-api</artifactId>
+            <version>${gravitee-secret-api.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hibernate.validator</groupId>
+            <artifactId>hibernate-validator</artifactId>
+            <version>${hibernate-validator.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+            <optional>true</optional>
         </dependency>
 
         <!-- Spring -->
@@ -131,14 +181,23 @@
 
         <!-- Unit testing -->
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
             <scope>test</scope>
         </dependency>
-
         <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
