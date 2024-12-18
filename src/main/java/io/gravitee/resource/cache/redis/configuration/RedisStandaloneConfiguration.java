@@ -15,19 +15,18 @@
  */
 package io.gravitee.resource.cache.redis.configuration;
 
+import lombok.Getter;
+import lombok.Setter;
+
 /**
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class RedisStandaloneConfiguration extends HostAndPort {
+@Getter
+@Setter
+public class RedisStandaloneConfiguration {
 
-    private Boolean enabled = true;
-
-    public Boolean isEnabled() {
-        return enabled;
-    }
-
-    public void setEnabled(Boolean enabled) {
-        this.enabled = enabled;
-    }
+    private boolean enabled = true;
+    private String host = "localhost";
+    private int port = 6379;
 }
