@@ -41,7 +41,6 @@
         <gravitee-secret-api.version>1.0.0-feat-secret-kind-annotation-SNAPSHOT</gravitee-secret-api.version>
         <gravitee-resource-cache-provider-api.version>2.0.0</gravitee-resource-cache-provider-api.version>
         <gravitee-plugin.version>4.4.0-feat-add-support-secret-kind-SNAPSHOT</gravitee-plugin.version>
-        <gravitee-common.version>4.6.0</gravitee-common.version>
         <gravitee-expression-language.version>4.0.0-alpha.3</gravitee-expression-language.version>
 
         <commons-pool2.version>2.9.0</commons-pool2.version>
@@ -110,6 +109,7 @@
             <groupId>io.gravitee.el</groupId>
             <artifactId>gravitee-expression-language</artifactId>
             <version>${gravitee-expression-language.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -245,42 +245,6 @@
                         <goals>
                             <goal>single</goal>
                         </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>com.hubspot.maven.plugins</groupId>
-                <artifactId>prettier-maven-plugin</artifactId>
-                <version>0.22</version>
-                <configuration>
-                    <nodeVersion>12.13.0</nodeVersion>
-                    <prettierJavaVersion>1.6.1</prettierJavaVersion>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>${build-helper-maven-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>add-source</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>add-source</goal>
-                        </goals>
-                        <configuration>
-                            <sources>
-                                <source>generated-sources</source>
-                            </sources>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
