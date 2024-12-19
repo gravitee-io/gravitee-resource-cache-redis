@@ -40,7 +40,7 @@
         <gravitee-resource-api.version>1.1.0</gravitee-resource-api.version>
         <gravitee-secret-api.version>1.0.0-alpha.3</gravitee-secret-api.version>
         <gravitee-resource-cache-provider-api.version>2.0.0</gravitee-resource-cache-provider-api.version>
-        <gravitee-plugin.version>4.3.1</gravitee-plugin.version>
+        <gravitee-plugin.version>4.4.0-feat-add-support-secret-kind-SNAPSHOT</gravitee-plugin.version>
         <gravitee-common.version>4.6.0</gravitee-common.version>
         <gravitee-expression-language.version>4.0.0-alpha.3</gravitee-expression-language.version>
 

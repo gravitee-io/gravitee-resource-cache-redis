@@ -17,6 +17,8 @@ package io.gravitee.resource.cache.redis.configuration;
 
 import io.gravitee.plugin.annotation.ConfigurationEvaluator;
 import io.gravitee.resource.api.ResourceConfiguration;
+import io.gravitee.secrets.api.annotation.Secret;
+import io.gravitee.secrets.api.el.FieldKind;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,13 +26,16 @@ import lombok.Setter;
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
  * @author GraviteeSource Team
  */
-@ConfigurationEvaluator(attributePrefix = "redis")
+@ConfigurationEvaluator
 @Getter
 @Setter
 public class RedisCacheResourceConfiguration implements ResourceConfiguration {
 
     private int maxTotal = 8;
+
+    @Secret(FieldKind.PASSWORD)
     private String password;
+
     private long timeToLiveSeconds;
     private long timeout = 2000;
     private boolean releaseCache;

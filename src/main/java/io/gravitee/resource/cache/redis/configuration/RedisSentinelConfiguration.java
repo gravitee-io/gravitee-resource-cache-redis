@@ -15,6 +15,8 @@
  */
 package io.gravitee.resource.cache.redis.configuration;
 
+import io.gravitee.secrets.api.annotation.Secret;
+import io.gravitee.secrets.api.el.FieldKind;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
@@ -30,6 +32,9 @@ public class RedisSentinelConfiguration {
 
     private boolean enabled;
     private String masterId;
+
+    @Secret(FieldKind.PASSWORD)
     private String password;
+
     private List<HostAndPort> nodes = new ArrayList<>();
 }

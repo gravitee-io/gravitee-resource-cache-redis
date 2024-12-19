@@ -16,7 +16,6 @@
 package io.gravitee.resource.cache.redis;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 import io.gravitee.el.TemplateEngine;
 import io.gravitee.el.spel.context.SecuredResolver;
@@ -24,6 +23,7 @@ import io.gravitee.resource.api.AbstractConfigurableResource;
 import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfiguration;
 import io.gravitee.secrets.api.el.DelegatingEvaluatedSecretsMethods;
 import io.gravitee.secrets.api.el.EvaluatedSecretsMethods;
+import io.gravitee.secrets.api.el.FieldKind;
 import io.gravitee.secrets.api.el.SecretFieldAccessControl;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -87,10 +87,10 @@ class RedisCacheResourceTest {
     @Test
     void should_start_and_eval_config() throws Exception {
         RedisCacheResourceConfiguration redisCacheResourceConfiguration = new RedisCacheResourceConfiguration();
-        redisCacheResourceConfiguration.setPassword(formatEL("greenis"));
+        redisCacheResourceConfiguration.setPassword(asSecretEL("greenis"));
         redisCacheResourceConfiguration.getStandalone().setHost("{#host}");
         redisCacheResourceConfiguration.getSentinel().setMasterId("{#masterId}");
-        redisCacheResourceConfiguration.getSentinel().setPassword(formatEL("greenisguard"));
+        redisCacheResourceConfiguration.getSentinel().setPassword(asSecretEL("greenisguard"));
         RedisCacheResource redisCacheResource = underTest(redisCacheResourceConfiguration);
         redisCacheResource.start();
         RedisCacheResourceConfiguration configuration = redisCacheResource.configuration();
@@ -100,26 +100,23 @@ class RedisCacheResourceTest {
         assertThat(configuration.getPassword()).isEqualTo("greenis");
         assertThat(configuration.getSentinel().getPassword()).isEqualTo("greenisguard");
 
-        // TODO remove
-        assertThat(recordedSecretFieldAccessControls).containsExactlyInAnyOrder(null, null);
-        // TODO add
-        //        assertThat(recordedSecretFieldAccessControls)
-        //            .containsExactlyInAnyOrder(
-        //                new SecretFieldAccessControl(true, FieldKind.PASSWORD, "password"),
-        //                new SecretFieldAccessControl(true, FieldKind.PASSWORD, "sentinel.password")
-        //            );
+        assertThat(recordedSecretFieldAccessControls)
+            .containsExactlyInAnyOrder(
+                new SecretFieldAccessControl(true, FieldKind.PASSWORD, "password"),
+                new SecretFieldAccessControl(true, FieldKind.PASSWORD, "sentinel.password")
+            );
     }
 
     @Test
-    @Disabled("TODO renable it!")
-    void should_not_be_able_to_resolve_secret_on_non_sensitive_field() throws IllegalAccessException, NoSuchFieldException {
+    void should_not_be_able_to_resolve_secret_on_non_sensitive_field() throws Exception {
         RedisCacheResourceConfiguration redisCacheResourceConfiguration = new RedisCacheResourceConfiguration();
-        redisCacheResourceConfiguration.getStandalone().setHost(formatEL("acme.com"));
+        redisCacheResourceConfiguration.getStandalone().setHost(asSecretEL("acme.com"));
         RedisCacheResource redisCacheResource = underTest(redisCacheResourceConfiguration);
-        assertThatCode(redisCacheResource::start).isInstanceOf(Exception.class);
+        redisCacheResource.start();
+        assertThat(recordedSecretFieldAccessControls).containsExactlyInAnyOrder(new SecretFieldAccessControl(false, null, null));
     }
 
-    private static String formatEL(String password) {
+    private static String asSecretEL(String password) {
         return "{#secrets.fromGrant('%s', #%s)}".formatted(password, SecretFieldAccessControl.EL_VARIABLE);
     }
 
