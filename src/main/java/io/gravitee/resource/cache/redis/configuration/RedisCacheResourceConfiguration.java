@@ -15,19 +15,30 @@
  */
 package io.gravitee.resource.cache.redis.configuration;
 
+import io.gravitee.plugin.annotation.ConfigurationEvaluator;
 import io.gravitee.resource.api.ResourceConfiguration;
+import io.gravitee.secrets.api.annotation.Secret;
+import io.gravitee.secrets.api.el.FieldKind;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
  * @author GraviteeSource Team
  */
+@ConfigurationEvaluator
+@Getter
+@Setter
 public class RedisCacheResourceConfiguration implements ResourceConfiguration {
 
     private int maxTotal = 8;
+
+    @Secret(FieldKind.PASSWORD)
     private String password;
-    private long timeToLiveSeconds = 0;
+
+    private long timeToLiveSeconds;
     private long timeout = 2000;
-    private boolean releaseCache = false;
+    private boolean releaseCache;
     private boolean useSsl = true;
 
     @Deprecated
@@ -35,78 +46,4 @@ public class RedisCacheResourceConfiguration implements ResourceConfiguration {
 
     private RedisStandaloneConfiguration standalone = new RedisStandaloneConfiguration();
     private RedisSentinelConfiguration sentinel = new RedisSentinelConfiguration();
-
-    public int getMaxTotal() {
-        return maxTotal;
-    }
-
-    public void setMaxTotal(int maxTotal) {
-        this.maxTotal = maxTotal;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public long getTimeToLiveSeconds() {
-        return timeToLiveSeconds;
-    }
-
-    public void setTimeToLiveSeconds(long timeToLiveSeconds) {
-        this.timeToLiveSeconds = timeToLiveSeconds;
-    }
-
-    public long getTimeout() {
-        return timeout;
-    }
-
-    public void setTimeout(long timeout) {
-        this.timeout = timeout;
-    }
-
-    public boolean isReleaseCache() {
-        return releaseCache;
-    }
-
-    public void setReleaseCache(boolean releaseCache) {
-        this.releaseCache = releaseCache;
-    }
-
-    public boolean isUseSsl() {
-        return useSsl;
-    }
-
-    public void setUseSsl(boolean useSsl) {
-        this.useSsl = useSsl;
-    }
-
-    @Deprecated
-    public boolean isSentinelMode() {
-        return sentinelMode;
-    }
-
-    @Deprecated
-    public void setSentinelMode(boolean sentinelMode) {
-        this.sentinelMode = sentinelMode;
-    }
-
-    public HostAndPort getStandalone() {
-        return standalone;
-    }
-
-    public void setStandalone(RedisStandaloneConfiguration standalone) {
-        this.standalone = standalone;
-    }
-
-    public RedisSentinelConfiguration getSentinel() {
-        return sentinel;
-    }
-
-    public void setSentinel(RedisSentinelConfiguration sentinel) {
-        this.sentinel = sentinel;
-    }
 }

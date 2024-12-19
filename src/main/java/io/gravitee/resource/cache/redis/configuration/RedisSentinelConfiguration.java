@@ -15,49 +15,26 @@
  */
 package io.gravitee.resource.cache.redis.configuration;
 
+import io.gravitee.secrets.api.annotation.Secret;
+import io.gravitee.secrets.api.el.FieldKind;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
  * @author GraviteeSource Team
  */
+@Getter
+@Setter
 public class RedisSentinelConfiguration {
 
-    private Boolean enabled;
+    private boolean enabled;
     private String masterId;
+
+    @Secret(FieldKind.PASSWORD)
     private String password;
-    private List<HostAndPort> nodes = new ArrayList();
 
-    public Boolean isEnabled() {
-        return enabled;
-    }
-
-    public void setEnabled(Boolean enabled) {
-        this.enabled = enabled;
-    }
-
-    public String getMasterId() {
-        return masterId;
-    }
-
-    public void setMasterId(String masterId) {
-        this.masterId = masterId;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public List<HostAndPort> getNodes() {
-        return nodes;
-    }
-
-    public void setNodes(List<HostAndPort> nodes) {
-        this.nodes = nodes;
-    }
+    private List<HostAndPort> nodes = new ArrayList<>();
 }
