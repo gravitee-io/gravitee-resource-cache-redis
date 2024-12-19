@@ -124,8 +124,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     }
 
     private LettucePoolingClientConfiguration buildLettuceClientConfiguration() {
-        final LettucePoolingClientConfiguration.LettucePoolingClientConfigurationBuilder builder =
-            LettucePoolingClientConfiguration.builder();
+        final LettucePoolingClientConfiguration.LettucePoolingClientConfigurationBuilder builder = LettucePoolingClientConfiguration.builder();
         builder.commandTimeout(Duration.ofMillis(configuration().getTimeout()));
         if (configuration().isUseSsl()) {
             builder.useSsl();
