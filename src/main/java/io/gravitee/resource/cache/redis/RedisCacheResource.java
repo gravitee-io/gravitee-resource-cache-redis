@@ -1,11 +1,11 @@
-/**
- * Copyright (C) 2015 The Gravitee team (http://gravitee.io)
+/*
+ * Copyright © 2015 The Gravitee team (http://gravitee.io)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,7 @@ package io.gravitee.resource.cache.redis;
 import static java.lang.Boolean.TRUE;
 
 import io.gravitee.gateway.reactive.api.context.GenericExecutionContext;
+import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.CacheResource;
 import io.gravitee.resource.cache.redis.configuration.HostAndPort;
@@ -77,6 +78,11 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     }
 
     @Override
+    public Cache getCache(BaseExecutionContext ctx) {
+        return getCache(ctx.getAttributes());
+    }
+
+    @Override
     public Cache getCache(io.gravitee.gateway.api.ExecutionContext executionContext) {
         return getCache(executionContext.getAttributes());
     }
@@ -92,7 +98,8 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     }
 
     private LettucePoolingClientConfiguration buildLettuceClientConfiguration() {
-        final LettucePoolingClientConfiguration.LettucePoolingClientConfigurationBuilder builder = LettucePoolingClientConfiguration.builder();
+        final LettucePoolingClientConfiguration.LettucePoolingClientConfigurationBuilder builder =
+            LettucePoolingClientConfiguration.builder();
         builder.commandTimeout(Duration.ofMillis(configuration().getTimeout()));
         if (configuration().isUseSsl()) {
             builder.useSsl();
