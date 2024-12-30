@@ -1,3 +1,20 @@
+# [3.0.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/2.0.0...3.0.0) (2024-12-30)
+
+
+### Bug Fixes
+
+* **deps:** bump gravitee-gateway-api ([5dca38b](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/5dca38bb89a51dee1a69603b7dad8f7be3d82831))
+
+
+### Features
+
+* update cache provider api ([1b5cdce](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/1b5cdce98c9cc37323f3853c76c5d4862ed7e787))
+
+
+### BREAKING CHANGES
+
+* requires gravitee-gateway-api 3.9.0+ & resource-cache-provider-api 2.0.0+
+
 # [3.0.0-alpha.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/2.0.0...3.0.0-alpha.1) (2024-12-30)
 
 
