@@ -1,3 +1,10 @@
+# [3.1.0-alpha.2](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/3.1.0-alpha.1...3.1.0-alpha.2) (2025-01-07)
+
+
+### Features
+
+* rework pom management ([0741c9a](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/0741c9a90a721f0f5bf55052691c5915833c73b8))
+
 # [3.1.0-alpha.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/3.0.0...3.1.0-alpha.1) (2025-01-07)
 
 
