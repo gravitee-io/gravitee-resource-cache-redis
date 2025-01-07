@@ -24,7 +24,7 @@
     <parent>
         <groupId>io.gravitee</groupId>
         <artifactId>gravitee-parent</artifactId>
-        <version>22.2.2</version>
+        <version>22.2.4</version>
     </parent>
 
     <groupId>io.gravitee.resource</groupId>
@@ -35,35 +35,24 @@
     <description>The resource is used to maintain a cache and link it to the API lifecycle. Redis provides a different range of persistence options, it means that the cache can keep data after reboot.</description>
 
     <properties>
-        <gravitee-bom.version>8.1.16</gravitee-bom.version>
-        <commons-pool2.version>2.9.0</commons-pool2.version>
-        <gravitee-gateway-api.version>3.9.0</gravitee-gateway-api.version>
-        <gravitee-resource-api.version>1.1.0</gravitee-resource-api.version>
-        <gravitee-secret-api.version>1.0.0</gravitee-secret-api.version>
-        <gravitee-resource-cache-provider-api.version>2.0.0</gravitee-resource-cache-provider-api.version>
-        <gravitee-plugin.version>4.4.0</gravitee-plugin.version>
-        <gravitee-expression-language.version>4.0.0</gravitee-expression-language.version>
-
-        <commons-pool2.version>2.9.0</commons-pool2.version>
+        <gravitee-apim.version>4.6.0-alpha.4-SNAPSHOT</gravitee-apim.version>
         <lettuce.version>5.3.7.RELEASE</lettuce.version>
         <spring-data-redis.version>2.3.4.RELEASE</spring-data-redis.version>
-        <hibernate-validator.version>8.0.1.Final</hibernate-validator.version>
+
+        <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
+        <properties-maven-plugin.version>1.2.1</properties-maven-plugin.version>
 
         <!-- Property used by the publication job in CI-->
         <publish-folder-path>graviteeio-apim/plugins/resources</publish-folder-path>
-
-        <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
-        <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
-
     </properties>
 
     <dependencyManagement>
         <dependencies>
             <!-- Import bom to properly inherit all dependencies -->
             <dependency>
-                <groupId>io.gravitee</groupId>
-                <artifactId>gravitee-bom</artifactId>
-                <version>${gravitee-bom.version}</version>
+                <groupId>io.gravitee.apim</groupId>
+                <artifactId>gravitee-apim-bom</artifactId>
+                <version>${gravitee-apim.version}</version>
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>
@@ -75,14 +64,12 @@
         <dependency>
             <groupId>io.gravitee.resource</groupId>
             <artifactId>gravitee-resource-cache-provider-api</artifactId>
-            <version>${gravitee-resource-cache-provider-api.version}</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>io.gravitee.resource</groupId>
             <artifactId>gravitee-resource-api</artifactId>
-            <version>${gravitee-resource-api.version}</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
@@ -95,21 +82,18 @@
         <dependency>
             <groupId>io.gravitee.gateway</groupId>
             <artifactId>gravitee-gateway-api</artifactId>
-            <version>${gravitee-gateway-api.version}</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>io.gravitee.plugin</groupId>
             <artifactId>gravitee-plugin-annotation-processors</artifactId>
-            <version>${gravitee-plugin.version}</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>io.gravitee.el</groupId>
             <artifactId>gravitee-expression-language</artifactId>
-            <version>${gravitee-expression-language.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -129,14 +113,12 @@
         <dependency>
             <groupId>io.gravitee.secret</groupId>
             <artifactId>gravitee-secret-api</artifactId>
-            <version>${gravitee-secret-api.version}</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.hibernate.validator</groupId>
             <artifactId>hibernate-validator</artifactId>
-            <version>${hibernate-validator.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -169,7 +151,7 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-pool2</artifactId>
-            <version>${commons-pool2.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Logging -->
@@ -213,7 +195,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>properties-maven-plugin</artifactId>
-                <version>1.0.0</version>
+                <version>${properties-maven-plugin.version}</version>
                 <executions>
                     <execution>
                         <phase>initialize</phase>
