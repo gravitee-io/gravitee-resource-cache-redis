@@ -1,3 +1,10 @@
+# [3.1.0-alpha.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/3.0.0...3.1.0-alpha.1) (2025-01-07)
+
+
+### Features
+
+* add EL via annotation processor support and secrets ([a381747](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/a3817476837788e6124599838539ee56b0b9e6c0))
+
 # [3.0.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/2.0.0...3.0.0) (2024-12-30)
 
 
