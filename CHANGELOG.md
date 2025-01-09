@@ -1,3 +1,24 @@
+# [3.1.0-alpha.3](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/3.1.0-alpha.2...3.1.0-alpha.3) (2025-01-07)
+
+
+### Bug Fixes
+
+* reinstate commons pool as a dependency ([b22823c](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/b22823c0df3d992d6f2f667548b67309d9eb783c))
+
+# [3.1.0-alpha.2](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/3.1.0-alpha.1...3.1.0-alpha.2) (2025-01-07)
+
+
+### Features
+
+* rework pom management ([0741c9a](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/0741c9a90a721f0f5bf55052691c5915833c73b8))
+
+# [3.1.0-alpha.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/3.0.0...3.1.0-alpha.1) (2025-01-07)
+
+
+### Features
+
+* add EL via annotation processor support and secrets ([a381747](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/a3817476837788e6124599838539ee56b0b9e6c0))
+
 # [3.0.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/2.0.0...3.0.0) (2024-12-30)
 
 
