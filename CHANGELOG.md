@@ -1,3 +1,15 @@
+# [4.0.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/3.1.0...4.0.0) (2025-01-09)
+
+
+### chore
+
+* ack for BC ([bac00f7](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/bac00f7b71b71e51a958c7b1bdf3da1607647cd7))
+
+
+### BREAKING CHANGES
+
+* use of secret-api 1.0.0
+
 # [3.1.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/3.0.0...3.1.0) (2025-01-09)
 
 
