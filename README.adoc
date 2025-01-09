@@ -23,9 +23,10 @@ Current implementation of the cache resource is based on https://redis.io/[Redis
 |===
 | Plugin version | APIM version
 
-| 1.5            | 4.0 to 4.4
+| 4.0            | 4.6 to latest
+| 3.0            | DO NOT USE
 | 2.0            | 4.5 to latest
-| 3.0            | 4.6 to latest
+| 1.5            | 4.0 to 4.4
 |===
 
 == Configuration
@@ -33,80 +34,94 @@ Current implementation of the cache resource is based on https://redis.io/[Redis
 You can configure the resource with the following options :
 
 |===
-|Property |Required |Description |Type |Default
+|Property |Required |Description |Type |Default |EL Support| Secret Support
 
 .^|name
 ^.^|X
 |The name of the cache.
 ^.^|string
 ^.^|my-redis-cache
+^.^|X
+^.^|-
 
 .^|releaseCache
 ^.^|X
 | Release the cache when API is stopped? If enabled, the resource will release the cache. If not, you will have to manage it by yourself on your Redis server.
 ^.^|boolean
 ^.^|false
+^.^|X
+^.^|-
 
 .^|maxTotal
 ^.^|X
 |The maximum number of connections that are supported by the pool.
 ^.^|integer
 ^.^|8
+^.^|X
+^.^|-
 
 .^|password
 ^.^|
 |The password of the instance.
 ^.^|string
 ^.^|
+^.^|X
+^.^|X
 
 .^|timeToLiveSeconds
 ^.^|X
 |The maximum number of seconds an element can exist in the cache regardless of use. The element expires at this limit and will no longer be returned from the cache. The default value is 0, which means no timeToLive (TTL) eviction takes place (infinite lifetime).
 ^.^|integer
 ^.^|0
+^.^|X
+^.^|-
 
 .^|timeout
 ^.^|X
 |The timeout parameter specifies the connection timeout and the read/write timeout.
 ^.^|integer
 ^.^|2000
-
-.^|timeout
 ^.^|X
-|The timeout parameter specifies the connection timeout and the read/write timeout.
-^.^|integer
-^.^|2000
+^.^|-
 
 .^|useSsl
 ^.^|X
 | Use SSL connections.
 ^.^|boolean
 ^.^|true
+^.^|X
+^.^|-
 
 .^|sentinelMode
 ^.^|X
 |Sentinel provides high availability for Redis. In practical terms this means that using Sentinel you can create a Redis deployment that resists without human intervention certain kinds of failures.
 ^.^|boolean
 ^.^|false
+^.^|X
+^.^|-
 
 |===
 
 === Standalone configuration
 
 |===
-|Property |Required |Description |Type |Default
+|Property |Required |Description |Type |Default |EL Support| Secret Support
 
 .^|host
 ^.^|X
 |The host of the instance
 ^.^|string
 ^.^|localhost
+^.^|X
+^.^|-
 
 .^|port
 ^.^|X
 |The port of the instance.
 ^.^|integer
 ^.^|6379
+^.^|X
+^.^|-
 
 |===
 
@@ -134,28 +149,49 @@ You can configure the resource with the following options :
 }
 ----
 
+[source, json]
+.Extract with a secret and EL
+----
+{
+    "enabled" : true,
+    "configuration" : {
+        "password" : "{#secrets.get('/kubernetes/redis:password')}",
+        "standalone": {
+            "host" : "{#dictionary['redis']['host']}",
+            "port" : 6379
+        }
+    }
+}
+----
+
 === Sentinel configuration
 
 |===
-|Property |Required |Description |Type |Default
+|Property |Required |Description |Type |Default |EL Support| Secret Support
 
 .^|masterId
 ^.^|X
 |The sentinel master id
 ^.^|string
 ^.^|sentinel-master
+^.^|X
+^.^|-
 
 .^|password
 ^.^|-
 |The sentinel password.
 ^.^|string
 ^.^|
+^.^|X
+^.^|X
 
 .^|nodes
 ^.^|X
 |List of sentinel nodes.
 ^.^|Array
 ^.^|
+^.^|-
+^.^|-
 
 |===
 
