@@ -49,7 +49,7 @@ You can configure the resource with the following options :
 | Release the cache when API is stopped? If enabled, the resource will release the cache. If not, you will have to manage it by yourself on your Redis server.
 ^.^|boolean
 ^.^|false
-^.^|X
+^.^|-
 ^.^|-
 
 .^|maxTotal
@@ -57,7 +57,7 @@ You can configure the resource with the following options :
 |The maximum number of connections that are supported by the pool.
 ^.^|integer
 ^.^|8
-^.^|X
+^.^|-
 ^.^|-
 
 .^|password
@@ -73,7 +73,7 @@ You can configure the resource with the following options :
 |The maximum number of seconds an element can exist in the cache regardless of use. The element expires at this limit and will no longer be returned from the cache. The default value is 0, which means no timeToLive (TTL) eviction takes place (infinite lifetime).
 ^.^|integer
 ^.^|0
-^.^|X
+^.^|-
 ^.^|-
 
 .^|timeout
@@ -81,7 +81,7 @@ You can configure the resource with the following options :
 |The timeout parameter specifies the connection timeout and the read/write timeout.
 ^.^|integer
 ^.^|2000
-^.^|X
+^.^|-
 ^.^|-
 
 .^|useSsl
@@ -89,7 +89,7 @@ You can configure the resource with the following options :
 | Use SSL connections.
 ^.^|boolean
 ^.^|true
-^.^|X
+^.^|-
 ^.^|-
 
 .^|sentinelMode
@@ -97,7 +97,7 @@ You can configure the resource with the following options :
 |Sentinel provides high availability for Redis. In practical terms this means that using Sentinel you can create a Redis deployment that resists without human intervention certain kinds of failures.
 ^.^|boolean
 ^.^|false
-^.^|X
+^.^|-
 ^.^|-
 
 |===
@@ -120,7 +120,7 @@ You can configure the resource with the following options :
 |The port of the instance.
 ^.^|integer
 ^.^|6379
-^.^|X
+^.^|-
 ^.^|-
 
 |===
