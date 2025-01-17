@@ -1,3 +1,10 @@
+## [4.0.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.0.0...4.0.1) (2025-01-17)
+
+
+### Bug Fixes
+
+* udpate schema form for EL and secrets support ([65a9d29](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/65a9d2955b8ea77acd88b039208b80ec87ad3c27))
+
 # [4.0.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/3.1.0...4.0.0) (2025-01-09)
 
 
