@@ -16,7 +16,7 @@
         },
         "password": {
             "title": "Password",
-            "description": "The password of the instance.",
+            "description": "The password of the instance. (Supports EL and secrets)",
             "type": "string",
             "writeOnly": true
         },
@@ -51,13 +51,13 @@
                         },
                         "host": {
                             "title": "Host",
-                            "description": "The host of the instance",
+                            "description": "The host of the instance. (Supports EL)",
                             "type": "string",
                             "default": "localhost"
                         },
                         "port": {
                             "title": "Port",
-                            "description": "The port of the instance",
+                            "description": "The port of the instance.",
                             "type": "integer",
                             "default": 6379
                         }
@@ -95,13 +95,13 @@
                         },
                         "masterId": {
                             "title": "Master",
-                            "description": "The sentinel master id",
+                            "description": "The sentinel master id. (Supports EL)",
                             "type": "string",
                             "default": "sentinel-master"
                         },
                         "password": {
                             "title": "Sentinel password",
-                            "description": "The sentinel password",
+                            "description": "The sentinel password. (Supports EL and secrets)",
                             "type": "string",
                             "writeOnly": true
                         },
