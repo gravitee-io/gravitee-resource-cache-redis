@@ -24,6 +24,7 @@ import io.gravitee.resource.cache.api.CacheResource;
 import io.gravitee.resource.cache.redis.configuration.HostAndPort;
 import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfiguration;
 import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfigurationEvaluator;
+import io.lettuce.core.api.StatefulConnection;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisPassword;
 import org.springframework.data.redis.connection.RedisSentinelConfiguration;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -130,7 +132,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
         if (configuration().isUseSsl()) {
             builder.useSsl();
         }
-        GenericObjectPoolConfig<?> poolConfig = new GenericObjectPoolConfig<>();
+        GenericObjectPoolConfig<StatefulConnection<?, ?>> poolConfig = new GenericObjectPoolConfig<>();
         poolConfig.setMaxTotal(configuration().getMaxTotal());
         poolConfig.setBlockWhenExhausted(false);
         builder.poolConfig(poolConfig);
@@ -149,9 +151,9 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
             // Parsing and registering nodes
             sentinelNodes.forEach(hostAndPort -> sentinelConfiguration.sentinel(hostAndPort.getHost(), hostAndPort.getPort()));
             // Sentinel Password
-            sentinelConfiguration.setSentinelPassword(configuration().getSentinel().getPassword());
+            sentinelConfiguration.setSentinelPassword(RedisPassword.of(configuration().getSentinel().getPassword()));
             // Redis Password
-            sentinelConfiguration.setPassword(configuration().getPassword());
+            sentinelConfiguration.setPassword(RedisPassword.of(configuration().getPassword()));
 
             lettuceConnectionFactory = new LettuceConnectionFactory(sentinelConfiguration, buildLettuceClientConfiguration());
         } else {
@@ -159,7 +161,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
             RedisStandaloneConfiguration standaloneConfiguration = new RedisStandaloneConfiguration();
             standaloneConfiguration.setHostName(configuration().getStandalone().getHost());
             standaloneConfiguration.setPort(configuration().getStandalone().getPort());
-            standaloneConfiguration.setPassword(configuration().getPassword());
+            standaloneConfiguration.setPassword(RedisPassword.of(configuration().getPassword()));
 
             lettuceConnectionFactory = new LettuceConnectionFactory(standaloneConfiguration, buildLettuceClientConfiguration());
         }
