@@ -40,7 +40,6 @@
         <spring-data-redis.version>3.5.6</spring-data-redis.version>
         <commons-pool2.version>2.9.0</commons-pool2.version>
 
-        <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
         <properties-maven-plugin.version>1.2.1</properties-maven-plugin.version>
 
         <!-- Property used by the publication job in CI-->
@@ -215,7 +214,6 @@
             </plugin>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>${maven-assembly-plugin.version}</version>
                 <configuration>
                     <appendAssemblyId>false</appendAssemblyId>
                     <descriptors>

@@ -100,11 +100,10 @@ class RedisCacheResourceTest {
         assertThat(configuration.getPassword()).isEqualTo("greenis");
         assertThat(configuration.getSentinel().getPassword()).isEqualTo("greenisguard");
 
-        assertThat(recordedSecretFieldAccessControls)
-            .containsExactlyInAnyOrder(
-                new SecretFieldAccessControl(true, FieldKind.PASSWORD, "password"),
-                new SecretFieldAccessControl(true, FieldKind.PASSWORD, "sentinel.password")
-            );
+        assertThat(recordedSecretFieldAccessControls).containsExactlyInAnyOrder(
+            new SecretFieldAccessControl(true, FieldKind.PASSWORD, "password"),
+            new SecretFieldAccessControl(true, FieldKind.PASSWORD, "sentinel.password")
+        );
     }
 
     @Test

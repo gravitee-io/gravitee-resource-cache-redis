@@ -76,8 +76,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
         configuration = new RedisCacheResourceConfigurationEvaluator(configuration()).evalNow(deploymentContext);
 
         try {
-            RedisCacheConfiguration conf = RedisCacheConfiguration
-                .defaultCacheConfig()
+            RedisCacheConfiguration conf = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(stringSerializer))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(stringSerializer))
                 .entryTtl(Duration.ofSeconds(configuration().getTimeToLiveSeconds()));
