@@ -1,3 +1,10 @@
+## [4.0.2](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.0.1...4.0.2) (2025-11-18)
+
+
+### Bug Fixes
+
+* bump lettuce and spring-data-redis dependencies ([825f630](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/825f630385be4f9ac7ed26021e2f319ccfbc26af))
+
 ## [4.0.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.0.0...4.0.1) (2025-01-17)
 
 
