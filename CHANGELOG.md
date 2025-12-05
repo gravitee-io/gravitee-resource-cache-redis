@@ -1,3 +1,10 @@
+## [4.0.3](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.0.2...4.0.3) (2025-12-05)
+
+
+### Bug Fixes
+
+* remove provided scope from commons-pool2 ([d9a26fc](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/d9a26fc121b1db276c44768663b746d4dd9e805d))
+
 ## [4.0.2](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.0.1...4.0.2) (2025-11-18)
 
 
