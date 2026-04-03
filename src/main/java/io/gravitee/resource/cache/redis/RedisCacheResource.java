@@ -53,6 +53,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     private final Logger logger = LoggerFactory.getLogger(RedisCacheResource.class);
     private final StringRedisSerializer stringSerializer = new StringRedisSerializer();
     private RedisCacheManager redisCacheManager;
+    private LettuceConnectionFactory lettuceConnectionFactory;
 
     @Inject
     @Setter
@@ -85,6 +86,17 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
         } catch (Exception e) {
             logger.error("Cannot create redis cache manager", e);
         }
+    }
+
+    @Override
+    protected void doStop() throws Exception {
+        super.doStop();
+        if (lettuceConnectionFactory != null) {
+            logger.debug("Destroying redis connection factory");
+            lettuceConnectionFactory.destroy();
+            lettuceConnectionFactory = null;
+        }
+        redisCacheManager = null;
     }
 
     @Override
@@ -139,7 +151,9 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     }
 
     public RedisConnectionFactory getConnectionFactory() {
-        final LettuceConnectionFactory lettuceConnectionFactory;
+        if (this.lettuceConnectionFactory != null) {
+            return this.lettuceConnectionFactory;
+        }
         boolean hasSentinelEnabled = configuration().getSentinel().isEnabled();
         if (hasSentinelEnabled || configuration().isSentinelMode()) {
             // Sentinels + Redis master / replicas
@@ -154,7 +168,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
             // Redis Password
             sentinelConfiguration.setPassword(RedisPassword.of(configuration().getPassword()));
 
-            lettuceConnectionFactory = new LettuceConnectionFactory(sentinelConfiguration, buildLettuceClientConfiguration());
+            this.lettuceConnectionFactory = new LettuceConnectionFactory(sentinelConfiguration, buildLettuceClientConfiguration());
         } else {
             // Standalone Redis
             RedisStandaloneConfiguration standaloneConfiguration = new RedisStandaloneConfiguration();
@@ -162,11 +176,11 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
             standaloneConfiguration.setPort(configuration().getStandalone().getPort());
             standaloneConfiguration.setPassword(RedisPassword.of(configuration().getPassword()));
 
-            lettuceConnectionFactory = new LettuceConnectionFactory(standaloneConfiguration, buildLettuceClientConfiguration());
+            this.lettuceConnectionFactory = new LettuceConnectionFactory(standaloneConfiguration, buildLettuceClientConfiguration());
         }
 
-        lettuceConnectionFactory.afterPropertiesSet();
+        this.lettuceConnectionFactory.afterPropertiesSet();
 
-        return lettuceConnectionFactory;
+        return this.lettuceConnectionFactory;
     }
 }

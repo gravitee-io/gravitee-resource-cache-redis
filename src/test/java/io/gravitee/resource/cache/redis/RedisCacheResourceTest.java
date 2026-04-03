@@ -28,7 +28,10 @@ import io.gravitee.secrets.api.el.SecretFieldAccessControl;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.*;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 
 /**
  * @author Benoit BORDIGONI (benoit.bordigoni at graviteesource.com)
@@ -113,6 +116,60 @@ class RedisCacheResourceTest {
         RedisCacheResource redisCacheResource = underTest(redisCacheResourceConfiguration);
         redisCacheResource.start();
         assertThat(recordedSecretFieldAccessControls).containsExactlyInAnyOrder(new SecretFieldAccessControl(false, null, null));
+    }
+
+    @Test
+    void should_destroy_connection_factory_on_stop() throws Exception {
+        AtomicBoolean destroyCalled = new AtomicBoolean(false);
+
+        RedisCacheResourceConfiguration config = new RedisCacheResourceConfiguration();
+        RedisCacheResource resource = new RedisCacheResource() {
+            @Override
+            public RedisConnectionFactory getConnectionFactory() {
+                // Call super to go through the real config-based path, then swap the field
+                // with a trackable factory that records destroy() calls
+                super.getConnectionFactory();
+                LettuceConnectionFactory trackable = new LettuceConnectionFactory() {
+                    @Override
+                    public void destroy() {
+                        destroyCalled.set(true);
+                    }
+                };
+                try {
+                    Field f = RedisCacheResource.class.getDeclaredField("lettuceConnectionFactory");
+                    f.setAccessible(true);
+                    f.set(this, trackable);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+                return trackable;
+            }
+        };
+        Field configurationField = AbstractConfigurableResource.class.getDeclaredField("configuration");
+        configurationField.setAccessible(true);
+        configurationField.set(resource, config);
+        resource.setDeploymentContext(new TestDeploymentContext(templateEngine));
+
+        resource.start();
+
+        // Verify factory field is populated after start
+        Field factoryField = RedisCacheResource.class.getDeclaredField("lettuceConnectionFactory");
+        factoryField.setAccessible(true);
+        assertThat(factoryField.get(resource)).isNotNull();
+
+        // Verify redisCacheManager is populated after start
+        Field cacheManagerField = RedisCacheResource.class.getDeclaredField("redisCacheManager");
+        cacheManagerField.setAccessible(true);
+        assertThat(cacheManagerField.get(resource)).isNotNull();
+
+        resource.stop();
+
+        // The critical assertion: destroy() must be called to release Netty threads
+        assertThat(destroyCalled.get()).as("destroy() must be called on the connection factory").isTrue();
+
+        // Fields should be cleaned up after stop
+        assertThat(factoryField.get(resource)).isNull();
+        assertThat(cacheManagerField.get(resource)).isNull();
     }
 
     private static String asSecretEL(String password) {
