@@ -1,3 +1,10 @@
+## [4.0.4](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.0.3...4.0.4) (2026-04-03)
+
+
+### Bug Fixes
+
+* **redis-cache:** destroy LettuceConnectionFactory on resource stop (APIM-13439) ([3a79ca0](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/3a79ca03106af21bcf35e5f91c0a05c281f6cb46))
+
 ## [4.0.3](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.0.2...4.0.3) (2025-12-05)
 
 
