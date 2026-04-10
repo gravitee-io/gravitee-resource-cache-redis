@@ -1,3 +1,10 @@
+# [4.1.0-alpha.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.0.4...4.1.0-alpha.1) (2026-04-10)
+
+
+### Features
+
+* **redis-cache:** share LettuceConnectionFactory across APIs (APIM-13553) ([e67a8f5](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/e67a8f537e761730fe3f134a329cc01fdc007b66))
+
 ## [4.0.4](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.0.3...4.0.4) (2026-04-03)
 
 
