@@ -28,10 +28,7 @@ import io.gravitee.secrets.api.el.SecretFieldAccessControl;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.*;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 
 /**
  * @author Benoit BORDIGONI (benoit.bordigoni at graviteesource.com)
@@ -119,36 +116,9 @@ class RedisCacheResourceTest {
     }
 
     @Test
-    void should_destroy_connection_factory_on_stop() throws Exception {
-        AtomicBoolean destroyCalled = new AtomicBoolean(false);
-
+    void should_release_shared_factory_on_stop() throws Exception {
         RedisCacheResourceConfiguration config = new RedisCacheResourceConfiguration();
-        RedisCacheResource resource = new RedisCacheResource() {
-            @Override
-            public RedisConnectionFactory getConnectionFactory() {
-                // Call super to go through the real config-based path, then swap the field
-                // with a trackable factory that records destroy() calls
-                super.getConnectionFactory();
-                LettuceConnectionFactory trackable = new LettuceConnectionFactory() {
-                    @Override
-                    public void destroy() {
-                        destroyCalled.set(true);
-                    }
-                };
-                try {
-                    Field f = RedisCacheResource.class.getDeclaredField("lettuceConnectionFactory");
-                    f.setAccessible(true);
-                    f.set(this, trackable);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-                return trackable;
-            }
-        };
-        Field configurationField = AbstractConfigurableResource.class.getDeclaredField("configuration");
-        configurationField.setAccessible(true);
-        configurationField.set(resource, config);
-        resource.setDeploymentContext(new TestDeploymentContext(templateEngine));
+        RedisCacheResource resource = underTest(config);
 
         resource.start();
 
@@ -157,19 +127,50 @@ class RedisCacheResourceTest {
         factoryField.setAccessible(true);
         assertThat(factoryField.get(resource)).isNotNull();
 
-        // Verify redisCacheManager is populated after start
-        Field cacheManagerField = RedisCacheResource.class.getDeclaredField("redisCacheManager");
-        cacheManagerField.setAccessible(true);
-        assertThat(cacheManagerField.get(resource)).isNotNull();
+        // Verify connectionFactoryKey is set
+        Field keyField = RedisCacheResource.class.getDeclaredField("connectionFactoryKey");
+        keyField.setAccessible(true);
+        assertThat(keyField.get(resource)).isNotNull();
+
+        // Registry should have 1 entry
+        assertThat(SharedConnectionFactoryRegistry.INSTANCE.registrySize()).isEqualTo(1);
 
         resource.stop();
 
-        // The critical assertion: destroy() must be called to release Netty threads
-        assertThat(destroyCalled.get()).as("destroy() must be called on the connection factory").isTrue();
-
         // Fields should be cleaned up after stop
         assertThat(factoryField.get(resource)).isNull();
-        assertThat(cacheManagerField.get(resource)).isNull();
+        assertThat(keyField.get(resource)).isNull();
+
+        // Registry should be empty (last reference released)
+        assertThat(SharedConnectionFactoryRegistry.INSTANCE.registrySize()).isZero();
+    }
+
+    @Test
+    void should_share_factory_between_two_resources_with_same_config() throws Exception {
+        RedisCacheResourceConfiguration config1 = new RedisCacheResourceConfiguration();
+        RedisCacheResourceConfiguration config2 = new RedisCacheResourceConfiguration();
+
+        RedisCacheResource resource1 = underTest(config1);
+        RedisCacheResource resource2 = underTest(config2);
+
+        resource1.start();
+        resource2.start();
+
+        // Both should share the same factory instance
+        Field factoryField = RedisCacheResource.class.getDeclaredField("lettuceConnectionFactory");
+        factoryField.setAccessible(true);
+        assertThat(factoryField.get(resource1)).isSameAs(factoryField.get(resource2));
+
+        // Registry should have 1 entry (shared)
+        assertThat(SharedConnectionFactoryRegistry.INSTANCE.registrySize()).isEqualTo(1);
+
+        // Stop first resource — factory should stay (still referenced by resource2)
+        resource1.stop();
+        assertThat(SharedConnectionFactoryRegistry.INSTANCE.registrySize()).isEqualTo(1);
+
+        // Stop second resource — factory should be destroyed
+        resource2.stop();
+        assertThat(SharedConnectionFactoryRegistry.INSTANCE.registrySize()).isZero();
     }
 
     private static String asSecretEL(String password) {
