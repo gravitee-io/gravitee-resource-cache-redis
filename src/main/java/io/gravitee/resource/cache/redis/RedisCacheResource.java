@@ -54,6 +54,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     private final StringRedisSerializer stringSerializer = new StringRedisSerializer();
     private RedisCacheManager redisCacheManager;
     private LettuceConnectionFactory lettuceConnectionFactory;
+    private String connectionFactoryKey;
 
     @Inject
     @Setter
@@ -91,9 +92,10 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     @Override
     protected void doStop() throws Exception {
         super.doStop();
-        if (lettuceConnectionFactory != null) {
-            logger.debug("Destroying redis connection factory");
-            lettuceConnectionFactory.destroy();
+        if (connectionFactoryKey != null) {
+            logger.debug("Releasing shared redis connection factory for key [{}]", connectionFactoryKey);
+            SharedConnectionFactoryRegistry.INSTANCE.release(connectionFactoryKey);
+            connectionFactoryKey = null;
             lettuceConnectionFactory = null;
         }
         redisCacheManager = null;
@@ -154,32 +156,32 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
         if (this.lettuceConnectionFactory != null) {
             return this.lettuceConnectionFactory;
         }
+
         boolean hasSentinelEnabled = configuration().getSentinel().isEnabled();
-        if (hasSentinelEnabled || configuration().isSentinelMode()) {
-            // Sentinels + Redis master / replicas
-            List<HostAndPort> sentinelNodes = configuration().getSentinel().getNodes();
+        boolean isSentinel = hasSentinelEnabled || configuration().isSentinelMode();
 
-            RedisSentinelConfiguration sentinelConfiguration = new RedisSentinelConfiguration();
-            sentinelConfiguration.master(configuration().getSentinel().getMasterId());
-            // Parsing and registering nodes
-            sentinelNodes.forEach(hostAndPort -> sentinelConfiguration.sentinel(hostAndPort.getHost(), hostAndPort.getPort()));
-            // Sentinel Password
-            sentinelConfiguration.setSentinelPassword(RedisPassword.of(configuration().getSentinel().getPassword()));
-            // Redis Password
-            sentinelConfiguration.setPassword(RedisPassword.of(configuration().getPassword()));
+        this.connectionFactoryKey = SharedConnectionFactoryRegistry.buildKey(configuration());
 
-            this.lettuceConnectionFactory = new LettuceConnectionFactory(sentinelConfiguration, buildLettuceClientConfiguration());
-        } else {
-            // Standalone Redis
-            RedisStandaloneConfiguration standaloneConfiguration = new RedisStandaloneConfiguration();
-            standaloneConfiguration.setHostName(configuration().getStandalone().getHost());
-            standaloneConfiguration.setPort(configuration().getStandalone().getPort());
-            standaloneConfiguration.setPassword(RedisPassword.of(configuration().getPassword()));
-
-            this.lettuceConnectionFactory = new LettuceConnectionFactory(standaloneConfiguration, buildLettuceClientConfiguration());
-        }
-
-        this.lettuceConnectionFactory.afterPropertiesSet();
+        this.lettuceConnectionFactory = SharedConnectionFactoryRegistry.INSTANCE.acquire(connectionFactoryKey, () -> {
+            LettuceConnectionFactory factory;
+            if (isSentinel) {
+                List<HostAndPort> sentinelNodes = configuration().getSentinel().getNodes();
+                RedisSentinelConfiguration sentinelConfiguration = new RedisSentinelConfiguration();
+                sentinelConfiguration.master(configuration().getSentinel().getMasterId());
+                sentinelNodes.forEach(hostAndPort -> sentinelConfiguration.sentinel(hostAndPort.getHost(), hostAndPort.getPort()));
+                sentinelConfiguration.setSentinelPassword(RedisPassword.of(configuration().getSentinel().getPassword()));
+                sentinelConfiguration.setPassword(RedisPassword.of(configuration().getPassword()));
+                factory = new LettuceConnectionFactory(sentinelConfiguration, buildLettuceClientConfiguration());
+            } else {
+                RedisStandaloneConfiguration standaloneConfiguration = new RedisStandaloneConfiguration();
+                standaloneConfiguration.setHostName(configuration().getStandalone().getHost());
+                standaloneConfiguration.setPort(configuration().getStandalone().getPort());
+                standaloneConfiguration.setPassword(RedisPassword.of(configuration().getPassword()));
+                factory = new LettuceConnectionFactory(standaloneConfiguration, buildLettuceClientConfiguration());
+            }
+            factory.afterPropertiesSet();
+            return factory;
+        });
 
         return this.lettuceConnectionFactory;
     }
