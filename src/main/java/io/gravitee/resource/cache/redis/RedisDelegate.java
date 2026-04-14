@@ -18,12 +18,16 @@ package io.gravitee.resource.cache.redis;
 import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.Element;
-import java.time.Duration;
+import io.vertx.core.Future;
+import io.vertx.redis.client.RedisAPI;
+import io.vertx.redis.client.Response;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.cache.RedisCacheWriter;
-import org.springframework.data.redis.serializer.RedisSerializer;
 
 /**
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
@@ -33,86 +37,141 @@ import org.springframework.data.redis.serializer.RedisSerializer;
 @RequiredArgsConstructor
 public class RedisDelegate implements Cache {
 
-    private final org.springframework.cache.Cache cache;
+    private final RedisAPI redisAPI;
+    private final String cacheName;
     private final Map<String, Object> contextAttributes;
-    private final RedisSerializer<String> serializer;
     private final int timeToLiveSeconds;
     private final boolean releaseCache;
+    private final long commandTimeoutMs;
 
     @Override
     public String getName() {
-        return this.cache.getName();
+        return this.cacheName;
     }
 
     @Override
     public Object getNativeCache() {
-        return cache.getNativeCache();
+        return redisAPI;
     }
 
     @Override
     public Element get(Object key) {
         log.debug("Find in cache {}", key);
-        try {
-            RedisCacheWriter redisCacheWriter = (RedisCacheWriter) this.getNativeCache();
-            byte[] bytes = redisCacheWriter.get(this.getName(), buildKey(key));
-            if (bytes != null) {
-                Object value = this.serializer.deserialize(bytes);
-                return new Element() {
-                    @Override
-                    public Object key() {
-                        return key;
-                    }
-
-                    @Override
-                    public Object value() {
-                        return value;
-                    }
-                };
-            }
-            return null;
-        } catch (Exception e) {
-            log.error("Cannot get element in cache", e);
-        }
-        log.debug("Not found {}", key);
-        return null;
+        return awaitBlocking(getAsync(key), "get");
     }
 
     @Override
     public void put(Element element) {
         log.debug("Put in cache {}", element.key());
-        try {
-            int ttl = this.timeToLiveSeconds;
-            if ((ttl == 0 && element.timeToLive() > 0) || (ttl > 0 && element.timeToLive() > 0 && ttl > element.timeToLive())) {
-                ttl = element.timeToLive();
-            }
-            RedisCacheWriter redisCacheWriter = (RedisCacheWriter) this.getNativeCache();
-
-            redisCacheWriter.put(
-                getName(),
-                buildKey(element.key()),
-                this.serializer.serialize((String) element.value()),
-                Duration.ofSeconds(ttl)
-            );
-        } catch (Exception e) {
-            log.error("Cannot put element in cache", e);
-        }
-    }
-
-    private byte[] buildKey(Object key) {
-        String allKey = this.getName() + key;
-        if (this.releaseCache) {
-            allKey += ":" + contextAttributes.get(ExecutionContext.ATTR_API_DEPLOYED_AT);
-        }
-        return this.serializer.serialize(allKey);
+        awaitBlocking(putAsync(element), "put");
     }
 
     @Override
     public void evict(Object o) {
-        cache.evict(o);
+        log.debug("Evict from cache {}", o);
+        awaitBlocking(evictAsync(o), "evict");
     }
 
     @Override
     public void clear() {
-        cache.clear();
+        log.debug("Clear cache {}", cacheName);
+        awaitBlocking(clearAsync(), "clear");
+    }
+
+    @Override
+    public Future<Element> getAsync(Object key) {
+        String redisKey = buildKey(key);
+        return redisAPI
+            .get(redisKey)
+            .timeout(commandTimeoutMs, TimeUnit.MILLISECONDS)
+            .map(response -> response != null ? toElement(key, response.toString()) : null);
+    }
+
+    @Override
+    public Future<Void> putAsync(Element element) {
+        int ttl = resolveTtl(element);
+        String redisKey = buildKey(element.key());
+        String value = (String) element.value();
+        Future<Response> future;
+        if (ttl > 0) {
+            future = redisAPI.setex(redisKey, String.valueOf(ttl), value);
+        } else {
+            future = redisAPI.set(List.of(redisKey, value));
+        }
+        return future.timeout(commandTimeoutMs, TimeUnit.MILLISECONDS).mapEmpty();
+    }
+
+    @Override
+    public Future<Void> evictAsync(Object key) {
+        String redisKey = buildKey(key);
+        return redisAPI.del(List.of(redisKey)).timeout(commandTimeoutMs, TimeUnit.MILLISECONDS).mapEmpty();
+    }
+
+    @Override
+    public Future<Void> clearAsync() {
+        return scanAndDelete("0", cacheName + "*");
+    }
+
+    private Future<Void> scanAndDelete(String cursor, String pattern) {
+        return redisAPI
+            .scan(List.of(cursor, "MATCH", pattern, "COUNT", "100"))
+            .timeout(commandTimeoutMs, TimeUnit.MILLISECONDS)
+            .compose(scanResult -> {
+                String nextCursor = scanResult.get(0).toString();
+                Response keys = scanResult.get(1);
+                Future<Void> deleteFuture = Future.succeededFuture();
+                if (keys != null && keys.size() > 0) {
+                    List<String> keyList = new ArrayList<>(keys.size());
+                    for (Response k : keys) {
+                        keyList.add(k.toString());
+                    }
+                    deleteFuture = redisAPI.del(keyList).timeout(commandTimeoutMs, TimeUnit.MILLISECONDS).mapEmpty();
+                }
+                if ("0".equals(nextCursor)) {
+                    return deleteFuture;
+                }
+                return deleteFuture.compose(v -> scanAndDelete(nextCursor, pattern));
+            });
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T awaitBlocking(Future<T> future, String op) {
+        try {
+            return (T) future.toCompletionStage().toCompletableFuture().join();
+        } catch (CompletionException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            log.error("[redis-cache-{}] Redis {} operation failed: {}", op, op, cause.getMessage(), cause);
+            return null;
+        }
+    }
+
+    private String buildKey(Object key) {
+        String fullKey = cacheName + key;
+        if (releaseCache) {
+            fullKey += ":" + contextAttributes.get(ExecutionContext.ATTR_API_DEPLOYED_AT);
+        }
+        return fullKey;
+    }
+
+    private int resolveTtl(Element element) {
+        int ttl = timeToLiveSeconds;
+        if ((ttl == 0 && element.timeToLive() > 0) || (ttl > 0 && element.timeToLive() > 0 && ttl > element.timeToLive())) {
+            ttl = element.timeToLive();
+        }
+        return ttl;
+    }
+
+    private static Element toElement(Object key, String value) {
+        return new Element() {
+            @Override
+            public Object key() {
+                return key;
+            }
+
+            @Override
+            public Object value() {
+                return value;
+            }
+        };
     }
 }

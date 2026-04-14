@@ -24,42 +24,38 @@ import io.gravitee.resource.cache.api.CacheResource;
 import io.gravitee.resource.cache.redis.configuration.HostAndPort;
 import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfiguration;
 import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfigurationEvaluator;
-import io.lettuce.core.api.StatefulConnection;
-import java.time.Duration;
-import java.util.List;
+import io.vertx.core.Vertx;
+import io.vertx.redis.client.Redis;
+import io.vertx.redis.client.RedisAPI;
+import io.vertx.redis.client.RedisClientType;
+import io.vertx.redis.client.RedisOptions;
+import io.vertx.redis.client.RedisRole;
 import java.util.Map;
 import javax.inject.Inject;
 import lombok.Setter;
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.data.redis.cache.RedisCacheConfiguration;
-import org.springframework.data.redis.cache.RedisCacheManager;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.connection.RedisPassword;
-import org.springframework.data.redis.connection.RedisSentinelConfiguration;
-import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
-import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
-import org.springframework.data.redis.connection.lettuce.LettucePoolingClientConfiguration;
-import org.springframework.data.redis.serializer.RedisSerializationContext;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.core.env.Environment;
 
 /**
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class RedisCacheResource extends CacheResource<RedisCacheResourceConfiguration> {
+@Slf4j
+public class RedisCacheResource extends CacheResource<RedisCacheResourceConfiguration> implements ApplicationContextAware {
 
-    private final Logger logger = LoggerFactory.getLogger(RedisCacheResource.class);
-    private final StringRedisSerializer stringSerializer = new StringRedisSerializer();
-    private RedisCacheManager redisCacheManager;
-    private LettuceConnectionFactory lettuceConnectionFactory;
+    @Setter
+    private ApplicationContext applicationContext;
 
     @Inject
     @Setter
     private DeploymentContext deploymentContext;
 
     private RedisCacheResourceConfiguration configuration;
+    private volatile Redis redisClient;
+    private volatile RedisAPI redisAPI;
+    private String registryKey;
 
     @Override
     public RedisCacheResourceConfiguration configuration() {
@@ -72,31 +68,40 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     @Override
     protected void doStart() throws Exception {
         super.doStart();
-        logger.debug("Create redis cache manager");
+        log.debug("Create redis cache resource");
 
         configuration = new RedisCacheResourceConfigurationEvaluator(configuration()).evalNow(deploymentContext);
 
-        try {
-            RedisCacheConfiguration conf = RedisCacheConfiguration.defaultCacheConfig()
-                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(stringSerializer))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(stringSerializer))
-                .entryTtl(Duration.ofSeconds(configuration().getTimeToLiveSeconds()));
+        Vertx vertx = applicationContext.getBean(Vertx.class);
 
-            this.redisCacheManager = RedisCacheManager.builder(getConnectionFactory()).cacheDefaults(conf).build();
+        registryKey = SharedRedisClientRegistry.buildKey(configuration);
+
+        redisClient = SharedRedisClientRegistry.INSTANCE.acquire(registryKey, () -> {
+            RedisOptions options = buildRedisOptions();
+            return Redis.createClient(vertx, options);
+        });
+
+        try {
+            redisAPI = RedisAPI.api(redisClient);
         } catch (Exception e) {
-            logger.error("Cannot create redis cache manager", e);
+            // Ensure we don't leak a refcount if anything after acquire() fails
+            SharedRedisClientRegistry.INSTANCE.release(registryKey);
+            registryKey = null;
+            redisClient = null;
+            throw e;
         }
     }
 
     @Override
     protected void doStop() throws Exception {
         super.doStop();
-        if (lettuceConnectionFactory != null) {
-            logger.debug("Destroying redis connection factory");
-            lettuceConnectionFactory.destroy();
-            lettuceConnectionFactory = null;
+        if (registryKey != null) {
+            log.debug("Releasing shared Redis client for key [{}]", registryKey);
+            SharedRedisClientRegistry.INSTANCE.release(registryKey);
+            registryKey = null;
+            redisClient = null;
+            redisAPI = null;
         }
-        redisCacheManager = null;
     }
 
     @Override
@@ -128,59 +133,67 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
 
     private Cache getCache(Map<String, Object> contextAttributes) {
         return new RedisDelegate(
-            this.redisCacheManager.getCache("gravitee:"),
+            redisAPI,
+            "gravitee:",
             contextAttributes,
-            stringSerializer,
             (int) configuration().getTimeToLiveSeconds(),
-            configuration().isReleaseCache()
+            configuration().isReleaseCache(),
+            configuration().getTimeout()
         );
     }
 
-    private LettucePoolingClientConfiguration buildLettuceClientConfiguration() {
-        final LettucePoolingClientConfiguration.LettucePoolingClientConfigurationBuilder builder =
-            LettucePoolingClientConfiguration.builder();
-        builder.commandTimeout(Duration.ofMillis(configuration().getTimeout()));
-        if (configuration().isUseSsl()) {
-            builder.useSsl();
+    private RedisOptions buildRedisOptions() {
+        RedisOptions options = new RedisOptions();
+        boolean ssl = configuration.isUseSsl();
+        boolean isSentinel = configuration.getSentinel().isEnabled() || configuration.isSentinelMode();
+
+        if (isSentinel) {
+            options.setType(RedisClientType.SENTINEL);
+            for (HostAndPort node : configuration.getSentinel().getNodes()) {
+                options.addConnectionString(buildConnectionString(node.getHost(), node.getPort(), ssl));
+            }
+            options.setMasterName(configuration.getSentinel().getMasterId());
+            options.setRole(RedisRole.MASTER);
+            String sentinelPassword = configuration.getSentinel().getPassword();
+            if (sentinelPassword != null && !sentinelPassword.isEmpty()) {
+                options.setPassword(sentinelPassword);
+            }
+        } else {
+            options.setType(RedisClientType.STANDALONE);
+            options.setConnectionString(
+                buildConnectionString(configuration.getStandalone().getHost(), configuration.getStandalone().getPort(), ssl)
+            );
+            String password = configuration.getPassword();
+            if (password != null && !password.isEmpty()) {
+                options.setPassword(password);
+            }
         }
-        GenericObjectPoolConfig<StatefulConnection<?, ?>> poolConfig = new GenericObjectPoolConfig<>();
-        poolConfig.setMaxTotal(configuration().getMaxTotal());
-        poolConfig.setBlockWhenExhausted(false);
-        builder.poolConfig(poolConfig);
-        return builder.build();
+
+        if (ssl) {
+            options.getNetClientOptions().setSsl(true).setTrustAll(true);
+            options.getNetClientOptions().setHostnameVerificationAlgorithm("");
+        }
+
+        // Pool config from gravitee.yml
+        Environment env = applicationContext.getBean(Environment.class);
+        int maxPoolSize = env.getProperty("redis.configurations.default.maxPoolSize", Integer.class, 6);
+        int cleanerInterval = env.getProperty("redis.configurations.default.poolCleanerInterval", Integer.class, 30000);
+        int recycleTimeout = env.getProperty("redis.configurations.default.poolRecycleTimeout", Integer.class, 180000);
+
+        options.setMaxPoolSize(maxPoolSize);
+        options.setPoolCleanerInterval(cleanerInterval);
+        options.setPoolRecycleTimeout(recycleTimeout);
+        options.setMaxWaitingHandlers(1024);
+
+        // Connection timeout from gravitee.yml
+        int connectTimeout = env.getProperty("redis.configurations.default.connectTimeout", Integer.class, 2000);
+        options.getNetClientOptions().setConnectTimeout(connectTimeout);
+
+        return options;
     }
 
-    public RedisConnectionFactory getConnectionFactory() {
-        if (this.lettuceConnectionFactory != null) {
-            return this.lettuceConnectionFactory;
-        }
-        boolean hasSentinelEnabled = configuration().getSentinel().isEnabled();
-        if (hasSentinelEnabled || configuration().isSentinelMode()) {
-            // Sentinels + Redis master / replicas
-            List<HostAndPort> sentinelNodes = configuration().getSentinel().getNodes();
-
-            RedisSentinelConfiguration sentinelConfiguration = new RedisSentinelConfiguration();
-            sentinelConfiguration.master(configuration().getSentinel().getMasterId());
-            // Parsing and registering nodes
-            sentinelNodes.forEach(hostAndPort -> sentinelConfiguration.sentinel(hostAndPort.getHost(), hostAndPort.getPort()));
-            // Sentinel Password
-            sentinelConfiguration.setSentinelPassword(RedisPassword.of(configuration().getSentinel().getPassword()));
-            // Redis Password
-            sentinelConfiguration.setPassword(RedisPassword.of(configuration().getPassword()));
-
-            this.lettuceConnectionFactory = new LettuceConnectionFactory(sentinelConfiguration, buildLettuceClientConfiguration());
-        } else {
-            // Standalone Redis
-            RedisStandaloneConfiguration standaloneConfiguration = new RedisStandaloneConfiguration();
-            standaloneConfiguration.setHostName(configuration().getStandalone().getHost());
-            standaloneConfiguration.setPort(configuration().getStandalone().getPort());
-            standaloneConfiguration.setPassword(RedisPassword.of(configuration().getPassword()));
-
-            this.lettuceConnectionFactory = new LettuceConnectionFactory(standaloneConfiguration, buildLettuceClientConfiguration());
-        }
-
-        this.lettuceConnectionFactory.afterPropertiesSet();
-
-        return this.lettuceConnectionFactory;
+    static String buildConnectionString(String host, int port, boolean ssl) {
+        String scheme = ssl ? "rediss" : "redis";
+        return scheme + "://" + host + ":" + port;
     }
 }
