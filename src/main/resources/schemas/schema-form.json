@@ -8,12 +8,6 @@
             "type": "boolean",
             "default": false
         },
-        "maxTotal": {
-            "title": "Max total",
-            "description": "The maximum number of connections that are supported by the pool.",
-            "type": "integer",
-            "default": 8
-        },
         "password": {
             "title": "Password",
             "description": "The password of the instance. (Supports EL and secrets)",
@@ -29,7 +23,7 @@
         },
         "timeout": {
             "title": "Timeout (in milliseconds)",
-            "description": "The timeout parameter specifies the connection timeout and the read/write timeout.",
+            "description": "The command timeout in milliseconds. If a Redis command takes longer than this, it will fail.",
             "type": "integer",
             "default": 2000,
             "minimum": 0
