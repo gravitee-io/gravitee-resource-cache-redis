@@ -1,3 +1,10 @@
+# [4.1.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.0.4...4.1.0) (2026-04-15)
+
+
+### Features
+
+* **redis-cache:** rewrite with Vert.x Redis client (APIM-13556) ([86c2126](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/86c21268c42d3fb40ce4a19487cfdcd896886bf3))
+
 ## [4.0.4](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.0.3...4.0.4) (2026-04-03)
 
 
