@@ -41,6 +41,14 @@ public class RedisCacheResourceConfiguration implements ResourceConfiguration {
     private boolean releaseCache;
     private boolean useSsl = true;
 
+    // Pool and timeout settings (per-API; shared clients use first-acquire-wins, mismatches logged)
+    private int maxPoolSize = 6;
+    private int maxPoolWaiting = 1024;
+    private int poolCleanerInterval = 30000;
+    private int poolRecycleTimeout = 180000;
+    private int maxWaitingHandlers = 1024;
+    private int connectTimeout = 2000;
+
     @Deprecated
     private boolean sentinelMode = false;
 

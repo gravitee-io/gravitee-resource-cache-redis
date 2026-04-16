@@ -36,7 +36,6 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
-import org.springframework.core.env.Environment;
 
 /**
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
@@ -76,7 +75,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
 
         registryKey = SharedRedisClientRegistry.buildKey(configuration);
 
-        redisClient = SharedRedisClientRegistry.INSTANCE.acquire(registryKey, () -> {
+        redisClient = SharedRedisClientRegistry.INSTANCE.acquire(registryKey, configuration, () -> {
             RedisOptions options = buildRedisOptions();
             return Redis.createClient(vertx, options);
         });
@@ -174,20 +173,12 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
             options.getNetClientOptions().setHostnameVerificationAlgorithm("");
         }
 
-        // Pool config from gravitee.yml
-        Environment env = applicationContext.getBean(Environment.class);
-        int maxPoolSize = env.getProperty("redis.configurations.default.maxPoolSize", Integer.class, 6);
-        int cleanerInterval = env.getProperty("redis.configurations.default.poolCleanerInterval", Integer.class, 30000);
-        int recycleTimeout = env.getProperty("redis.configurations.default.poolRecycleTimeout", Integer.class, 180000);
-
-        options.setMaxPoolSize(maxPoolSize);
-        options.setPoolCleanerInterval(cleanerInterval);
-        options.setPoolRecycleTimeout(recycleTimeout);
-        options.setMaxWaitingHandlers(1024);
-
-        // Connection timeout from gravitee.yml
-        int connectTimeout = env.getProperty("redis.configurations.default.connectTimeout", Integer.class, 2000);
-        options.getNetClientOptions().setConnectTimeout(connectTimeout);
+        options.setMaxPoolSize(configuration.getMaxPoolSize());
+        options.setMaxPoolWaiting(configuration.getMaxPoolWaiting());
+        options.setPoolCleanerInterval(configuration.getPoolCleanerInterval());
+        options.setPoolRecycleTimeout(configuration.getPoolRecycleTimeout());
+        options.setMaxWaitingHandlers(configuration.getMaxWaitingHandlers());
+        options.getNetClientOptions().setConnectTimeout(configuration.getConnectTimeout());
 
         return options;
     }
