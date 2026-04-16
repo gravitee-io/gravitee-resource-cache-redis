@@ -1,3 +1,10 @@
+# [4.2.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.1.0...4.2.0) (2026-04-16)
+
+
+### Features
+
+* **redis-cache:** move pool/timeout config from gravitee.yml to per-API resource form ([6b98fb9](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/6b98fb9971ed6b00f73f7d9521b96bfc13c04c83))
+
 # [4.1.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.0.4...4.1.0) (2026-04-15)
 
 
