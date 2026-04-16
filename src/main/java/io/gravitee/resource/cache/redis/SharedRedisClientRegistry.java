@@ -44,17 +44,19 @@ class SharedRedisClientRegistry {
 
     /**
      * Acquire a shared Redis client for the given key. If none exists, creates one using the supplier.
+     * Logs a warning if the new consumer's pool/timeout config differs from the first acquire.
      */
-    Redis acquire(String key, Supplier<Redis> clientSupplier) {
+    Redis acquire(String key, RedisCacheResourceConfiguration config, Supplier<Redis> clientSupplier) {
         RefCountedClient ref = clients.compute(key, (k, existing) -> {
             if (existing != null) {
                 existing.refCount.incrementAndGet();
+                warnOnPoolMismatch(config, existing.originalConfig, existing.refCount.get());
                 log.debug("Reusing shared Redis client, refCount={}, registrySize={}", existing.refCount.get(), clients.size());
                 return existing;
             }
             Redis client = clientSupplier.get();
             log.info("Created new shared Redis client, registrySize={}", clients.size() + 1);
-            return new RefCountedClient(client);
+            return new RefCountedClient(client, config);
         });
         return ref.client;
     }
@@ -118,6 +120,52 @@ class SharedRedisClientRegistry {
         return sb.toString();
     }
 
+    private static void warnOnPoolMismatch(
+        RedisCacheResourceConfiguration requested,
+        RedisCacheResourceConfiguration original,
+        int refCount
+    ) {
+        var mismatches = new ArrayList<String>();
+        if (requested.getMaxPoolSize() != original.getMaxPoolSize()) {
+            mismatches.add("maxPoolSize: requested=" + requested.getMaxPoolSize() + " vs active=" + original.getMaxPoolSize());
+        }
+        if (requested.getMaxPoolWaiting() != original.getMaxPoolWaiting()) {
+            mismatches.add("maxPoolWaiting: requested=" + requested.getMaxPoolWaiting() + " vs active=" + original.getMaxPoolWaiting());
+        }
+        if (requested.getPoolCleanerInterval() != original.getPoolCleanerInterval()) {
+            mismatches.add(
+                "poolCleanerInterval: requested=" + requested.getPoolCleanerInterval() + " vs active=" + original.getPoolCleanerInterval()
+            );
+        }
+        if (requested.getPoolRecycleTimeout() != original.getPoolRecycleTimeout()) {
+            mismatches.add(
+                "poolRecycleTimeout: requested=" + requested.getPoolRecycleTimeout() + " vs active=" + original.getPoolRecycleTimeout()
+            );
+        }
+        if (requested.getMaxWaitingHandlers() != original.getMaxWaitingHandlers()) {
+            mismatches.add(
+                "maxWaitingHandlers: requested=" + requested.getMaxWaitingHandlers() + " vs active=" + original.getMaxWaitingHandlers()
+            );
+        }
+        if (requested.getConnectTimeout() != original.getConnectTimeout()) {
+            mismatches.add("connectTimeout: requested=" + requested.getConnectTimeout() + " vs active=" + original.getConnectTimeout());
+        }
+        if (!mismatches.isEmpty()) {
+            String connection = original.getSentinel().isEnabled() || original.isSentinelMode()
+                ? "sentinel:" + original.getSentinel().getMasterId()
+                : original.getStandalone().getHost() + ":" + original.getStandalone().getPort();
+            log.warn(
+                "Shared Redis client for {} has pool/timeout settings mismatch. " +
+                    "First-acquire wins, these values from the new consumer are ignored: [{}]. " +
+                    "To align, ensure all resources pointing to this Redis use the same pool configuration. " +
+                    "Current shared client has {} active references.",
+                connection,
+                String.join(", ", mismatches),
+                refCount
+            );
+        }
+    }
+
     // Visible for testing
     int registrySize() {
         return clients.size();
@@ -127,10 +175,12 @@ class SharedRedisClientRegistry {
 
         final Redis client;
         final AtomicInteger refCount;
+        final RedisCacheResourceConfiguration originalConfig;
 
-        RefCountedClient(Redis client) {
+        RefCountedClient(Redis client, RedisCacheResourceConfiguration originalConfig) {
             this.client = client;
             this.refCount = new AtomicInteger(1);
+            this.originalConfig = originalConfig;
         }
     }
 }

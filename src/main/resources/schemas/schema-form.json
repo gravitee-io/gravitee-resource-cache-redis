@@ -12,7 +12,10 @@
             "title": "Password",
             "description": "The password of the instance. (Supports EL and secrets)",
             "type": "string",
-            "writeOnly": true
+            "writeOnly": true,
+            "gioConfig": {
+                "el": true
+            }
         },
         "timeToLiveSeconds": {
             "title": "Time to live (in seconds)",
@@ -47,13 +50,19 @@
                             "title": "Host",
                             "description": "The host of the instance. (Supports EL)",
                             "type": "string",
-                            "default": "localhost"
+                            "default": "localhost",
+                            "gioConfig": {
+                                "el": true
+                            }
                         },
                         "port": {
                             "title": "Port",
-                            "description": "The port of the instance.",
+                            "description": "The port of the instance. (Supports EL)",
                             "type": "integer",
-                            "default": 6379
+                            "default": 6379,
+                            "gioConfig": {
+                                "el": true
+                            }
                         }
                     },
                     "required": ["host", "port"]
@@ -78,6 +87,60 @@
                 }
             }
         },
+        "maxPoolSize": {
+            "title": "Max pool size",
+            "description": "Maximum number of connections in the pool. (Supports EL)",
+            "type": "integer",
+            "default": 6,
+            "gioConfig": {
+                "el": true
+            }
+        },
+        "maxPoolWaiting": {
+            "title": "Max pool waiting",
+            "description": "Maximum number of requests waiting for a connection from the pool. (Supports EL)",
+            "type": "integer",
+            "default": 1024,
+            "gioConfig": {
+                "el": true
+            }
+        },
+        "poolCleanerInterval": {
+            "title": "Pool cleaner interval (ms)",
+            "description": "Interval in milliseconds between pool cleaner runs. (Supports EL)",
+            "type": "integer",
+            "default": 30000,
+            "gioConfig": {
+                "el": true
+            }
+        },
+        "poolRecycleTimeout": {
+            "title": "Pool recycle timeout (ms)",
+            "description": "Timeout in milliseconds for recycling idle connections. (Supports EL)",
+            "type": "integer",
+            "default": 180000,
+            "gioConfig": {
+                "el": true
+            }
+        },
+        "maxWaitingHandlers": {
+            "title": "Max waiting handlers",
+            "description": "Maximum number of waiting handlers for the Redis client. (Supports EL)",
+            "type": "integer",
+            "default": 1024,
+            "gioConfig": {
+                "el": true
+            }
+        },
+        "connectTimeout": {
+            "title": "Connect timeout (ms)",
+            "description": "Maximum time in milliseconds to establish a connection. (Supports EL)",
+            "type": "integer",
+            "default": 2000,
+            "gioConfig": {
+                "el": true
+            }
+        },
         "sentinel": {
             "type": "object",
             "oneOf": [
@@ -91,13 +154,19 @@
                             "title": "Master",
                             "description": "The sentinel master id. (Supports EL)",
                             "type": "string",
-                            "default": "sentinel-master"
+                            "default": "sentinel-master",
+                            "gioConfig": {
+                                "el": true
+                            }
                         },
                         "password": {
                             "title": "Sentinel password",
                             "description": "The sentinel password. (Supports EL and secrets)",
                             "type": "string",
-                            "writeOnly": true
+                            "writeOnly": true,
+                            "gioConfig": {
+                                "el": true
+                            }
                         },
                         "nodes": {
                             "type": "array",
@@ -108,13 +177,21 @@
                                 "properties": {
                                     "host": {
                                         "title": "The host of node",
+                                        "description": "(Supports EL)",
                                         "type": "string",
-                                        "default": "localhost"
+                                        "default": "localhost",
+                                        "gioConfig": {
+                                            "el": true
+                                        }
                                     },
                                     "port": {
                                         "title": "The port of node",
+                                        "description": "(Supports EL)",
                                         "type": "integer",
-                                        "default": 26379
+                                        "default": 26379,
+                                        "gioConfig": {
+                                            "el": true
+                                        }
                                     }
                                 },
                                 "required": ["host", "port"]

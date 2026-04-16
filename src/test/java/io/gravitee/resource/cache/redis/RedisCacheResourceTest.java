@@ -36,7 +36,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.*;
 import org.springframework.context.ApplicationContext;
-import org.springframework.core.env.Environment;
 
 /**
  * @author Benoit BORDIGONI (benoit.bordigoni at graviteesource.com)
@@ -298,12 +297,6 @@ class RedisCacheResourceTest {
     private ApplicationContext mockApplicationContext() {
         ApplicationContext ctx = mock(ApplicationContext.class);
         when(ctx.getBean(Vertx.class)).thenReturn(vertx);
-        Environment env = mock(Environment.class);
-        when(env.getProperty("redis.configurations.default.maxPoolSize", Integer.class, 6)).thenReturn(6);
-        when(env.getProperty("redis.configurations.default.poolCleanerInterval", Integer.class, 30000)).thenReturn(30000);
-        when(env.getProperty("redis.configurations.default.poolRecycleTimeout", Integer.class, 180000)).thenReturn(180000);
-        when(env.getProperty("redis.configurations.default.connectTimeout", Integer.class, 2000)).thenReturn(2000);
-        when(ctx.getBean(Environment.class)).thenReturn(env);
         return ctx;
     }
 }
