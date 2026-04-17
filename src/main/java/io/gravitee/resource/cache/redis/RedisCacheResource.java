@@ -71,13 +71,11 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
 
         configuration = new RedisCacheResourceConfigurationEvaluator(configuration()).evalNow(deploymentContext);
 
-        Vertx vertx = applicationContext.getBean(Vertx.class);
-
         registryKey = SharedRedisClientRegistry.buildKey(configuration);
 
-        redisClient = SharedRedisClientRegistry.INSTANCE.acquire(registryKey, configuration, () -> {
+        redisClient = SharedRedisClientRegistry.INSTANCE.acquire(registryKey, configuration, redisVertx -> {
             RedisOptions options = buildRedisOptions();
-            return Redis.createClient(vertx, options);
+            return Redis.createClient(redisVertx, options);
         });
 
         try {

@@ -17,6 +17,8 @@ package io.gravitee.resource.cache.redis;
 
 import io.gravitee.resource.cache.redis.configuration.HostAndPort;
 import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfiguration;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
 import io.vertx.redis.client.Redis;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -24,7 +26,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -41,12 +43,19 @@ class SharedRedisClientRegistry {
     static final SharedRedisClientRegistry INSTANCE = new SharedRedisClientRegistry();
 
     private final ConcurrentHashMap<String, RefCountedClient> clients = new ConcurrentHashMap<>();
+    private volatile Vertx redisVertx;
 
     /**
-     * Acquire a shared Redis client for the given key. If none exists, creates one using the supplier.
-     * Logs a warning if the new consumer's pool/timeout config differs from the first acquire.
+     * Acquire a shared Redis client for the given key. If none exists, creates one using the supplier,
+     * which receives a dedicated {@link Vertx} instance isolated from the gateway's HTTP event loops.
+     * <p>This isolation is required because sync callers of {@link RedisDelegate#get}/{@code put}/etc.
+     * park the caller's event loop in {@code CompletableFuture.join()}. If the Redis client's Netty
+     * event loop is drawn from the same pool as HTTP-serving event loops, concurrent cache traffic
+     * eventually parks the Netty-hosting loop as well — preventing Redis responses from being read
+     * and deadlocking every in-flight {@code cache.get} until {@code commandTimeoutMs}.
+     * <p>Logs a warning if the new consumer's pool/timeout config differs from the first acquire.
      */
-    Redis acquire(String key, RedisCacheResourceConfiguration config, Supplier<Redis> clientSupplier) {
+    Redis acquire(String key, RedisCacheResourceConfiguration config, Function<Vertx, Redis> clientFactory) {
         RefCountedClient ref = clients.compute(key, (k, existing) -> {
             if (existing != null) {
                 existing.refCount.incrementAndGet();
@@ -54,11 +63,38 @@ class SharedRedisClientRegistry {
                 log.debug("Reusing shared Redis client, refCount={}, registrySize={}", existing.refCount.get(), clients.size());
                 return existing;
             }
-            Redis client = clientSupplier.get();
+            Redis client = clientFactory.apply(redisVertx());
             log.info("Created new shared Redis client, registrySize={}", clients.size() + 1);
             return new RefCountedClient(client, config);
         });
         return ref.client;
+    }
+
+    private Vertx redisVertx() {
+        Vertx v = redisVertx;
+        if (v != null) {
+            return v;
+        }
+        synchronized (this) {
+            if (redisVertx == null) {
+                redisVertx = Vertx.vertx(new VertxOptions().setEventLoopPoolSize(2).setWorkerPoolSize(2));
+                Runtime.getRuntime().addShutdownHook(new Thread(this::closeRedisVertxOnShutdown, "redis-cache-vertx-shutdown"));
+                log.info("Started dedicated Vertx for Redis I/O (eventLoopPoolSize=2)");
+            }
+            return redisVertx;
+        }
+    }
+
+    private void closeRedisVertxOnShutdown() {
+        Vertx v = redisVertx;
+        if (v == null) {
+            return;
+        }
+        try {
+            v.close().toCompletionStage().toCompletableFuture().get(5, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.warn("Error closing dedicated Redis Vertx on JVM shutdown", e);
+        }
     }
 
     /**
