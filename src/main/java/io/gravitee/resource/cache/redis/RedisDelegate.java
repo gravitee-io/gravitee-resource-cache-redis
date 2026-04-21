@@ -18,6 +18,7 @@ package io.gravitee.resource.cache.redis;
 import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.Element;
+import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.redis.client.RedisAPI;
 import io.vertx.redis.client.Response;
@@ -26,14 +27,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
+import lombok.CustomLog;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
  * @author GraviteeSource Team
  */
-@Slf4j
+@CustomLog
 @RequiredArgsConstructor
 public class RedisDelegate implements Cache {
 
@@ -107,9 +108,26 @@ public class RedisDelegate implements Cache {
         return redisAPI.del(List.of(redisKey)).timeout(commandTimeoutMs, TimeUnit.MILLISECONDS).mapEmpty();
     }
 
+    /**
+     * Clears only the current deployment's keys when {@code releaseCache=true}.
+     * Keys are written as {@code "gravitee:<userkey>:<deployAt>"} under that flag, so the
+     * SCAN pattern {@code "gravitee:*:<deployAt>"} isolates this deployment from other
+     * APIs/deployments sharing the same Redis. When {@code releaseCache=false} keys have
+     * no deployAt suffix and we intentionally no-op rather than wipe the full
+     * {@code "gravitee:*"} namespace (which would delete other APIs' entries).
+     */
     @Override
     public Future<Void> clearAsync() {
-        return scanAndDelete("0", cacheName + "*");
+        if (!releaseCache) {
+            log.debug("[redis-cache] clear() no-op: releaseCache=false — keys are not scoped by deployment");
+            return Future.succeededFuture();
+        }
+        Object deployAt = contextAttributes != null ? contextAttributes.get(ExecutionContext.ATTR_API_DEPLOYED_AT) : null;
+        if (deployAt == null) {
+            log.warn("[redis-cache] clear() skipped: ATTR_API_DEPLOYED_AT missing from context");
+            return Future.succeededFuture();
+        }
+        return scanAndDelete("0", cacheName + "*:" + deployAt);
     }
 
     private Future<Void> scanAndDelete(String cursor, String pattern) {
@@ -136,6 +154,17 @@ public class RedisDelegate implements Cache {
 
     @SuppressWarnings("unchecked")
     private <T> T awaitBlocking(Future<T> future, String op) {
+        // join() on an event-loop thread deadlocks: the same loop would complete the future.
+        // Warn and bail so the request proceeds as a cache miss instead of hanging indefinitely.
+        if (Context.isOnEventLoopThread()) {
+            log.warn(
+                "[redis-cache-{}] Sync {}() invoked from Vert.x event-loop thread — skipping to avoid deadlock. Use {}Async().",
+                op,
+                op,
+                op
+            );
+            return null;
+        }
         try {
             return (T) future.toCompletionStage().toCompletableFuture().join();
         } catch (CompletionException e) {

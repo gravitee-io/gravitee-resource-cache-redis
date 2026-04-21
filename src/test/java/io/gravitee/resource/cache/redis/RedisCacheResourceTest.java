@@ -19,8 +19,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.gravitee.el.TemplateEngine;
 import io.gravitee.el.spel.context.SecuredResolver;
+import io.gravitee.plugin.configurations.ssl.SslOptions;
 import io.gravitee.resource.api.AbstractConfigurableResource;
 import io.gravitee.resource.cache.redis.configuration.HostAndPort;
 import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfiguration;
@@ -60,8 +63,14 @@ class RedisCacheResourceTest {
         vertx.close();
     }
 
+    @AfterEach
+    void assertRegistryDrained() {
+        assertThat(TestFactoryAccess.sharedClientCount()).as("Registry should be empty after each test").isZero();
+    }
+
     @BeforeEach
     void before() {
+        RedisCacheResource.resetSharedFactory();
         EvaluatedSecretsMethods delegate = new EvaluatedSecretsMethods() {
             @Override
             public Single<String> fromGrant(String secretValue, SecretFieldAccessControl secretFieldAccessControl) {
@@ -89,20 +98,18 @@ class RedisCacheResourceTest {
         RedisCacheResourceConfiguration configuration = new RedisCacheResourceConfiguration();
         assertThat(configuration.getSentinel()).isNotNull();
         assertThat(configuration.getSentinel().isEnabled()).isFalse();
-        assertThat(configuration.getStandalone()).isNotNull();
-        assertThat(configuration.getStandalone().isEnabled()).isTrue();
-        assertThat(configuration.getStandalone().getHost()).isEqualTo("localhost");
-        assertThat(configuration.getStandalone().getPort()).isEqualTo(6379);
+        assertThat(configuration.isSentinelEnabled()).isFalse();
+        assertThat(configuration.getHost()).isEqualTo("localhost");
+        assertThat(configuration.getPort()).isEqualTo(6379);
         assertThat(configuration.getTimeout()).isEqualTo(2000);
         assertThat(configuration.isUseSsl()).isTrue();
-        assertThat(configuration.getMaxTotal()).isEqualTo(8);
     }
 
     @Test
     void should_start_and_eval_config() throws Exception {
         RedisCacheResourceConfiguration redisCacheResourceConfiguration = new RedisCacheResourceConfiguration();
         redisCacheResourceConfiguration.setPassword(asSecretEL("greenis"));
-        redisCacheResourceConfiguration.getStandalone().setHost("{#host}");
+        redisCacheResourceConfiguration.setHost("{#host}");
         redisCacheResourceConfiguration.getSentinel().setMasterId("{#masterId}");
         redisCacheResourceConfiguration.getSentinel().setPassword(asSecretEL("greenisguard"));
         RedisCacheResource redisCacheResource = underTest(redisCacheResourceConfiguration);
@@ -110,7 +117,7 @@ class RedisCacheResourceTest {
         RedisCacheResourceConfiguration configuration = redisCacheResource.configuration();
 
         assertThat(configuration.getSentinel().getMasterId()).isEqualTo("r2d2");
-        assertThat(configuration.getStandalone().getHost()).isEqualTo("acme.com");
+        assertThat(configuration.getHost()).isEqualTo("acme.com");
         assertThat(configuration.getPassword()).isEqualTo("greenis");
         assertThat(configuration.getSentinel().getPassword()).isEqualTo("greenisguard");
 
@@ -125,7 +132,7 @@ class RedisCacheResourceTest {
     @Test
     void should_not_be_able_to_resolve_secret_on_non_sensitive_field() throws Exception {
         RedisCacheResourceConfiguration redisCacheResourceConfiguration = new RedisCacheResourceConfiguration();
-        redisCacheResourceConfiguration.getStandalone().setHost(asSecretEL("acme.com"));
+        redisCacheResourceConfiguration.setHost(asSecretEL("acme.com"));
         RedisCacheResource redisCacheResource = underTest(redisCacheResourceConfiguration);
         redisCacheResource.start();
         assertThat(recordedSecretFieldAccessControls).containsExactlyInAnyOrder(new SecretFieldAccessControl(false, null, null));
@@ -144,13 +151,13 @@ class RedisCacheResourceTest {
         clientField.setAccessible(true);
         assertThat(clientField.get(resource)).isNotNull();
 
-        // Verify registryKey is set
-        Field keyField = RedisCacheResource.class.getDeclaredField("registryKey");
+        // Verify redisClientOptions is set
+        Field keyField = RedisCacheResource.class.getDeclaredField("redisClientOptions");
         keyField.setAccessible(true);
         assertThat(keyField.get(resource)).isNotNull();
 
         // Registry should have 1 entry
-        assertThat(SharedRedisClientRegistry.INSTANCE.registrySize()).isEqualTo(1);
+        assertThat(TestFactoryAccess.sharedClientCount()).isEqualTo(1);
 
         resource.stop();
 
@@ -159,7 +166,7 @@ class RedisCacheResourceTest {
         assertThat(keyField.get(resource)).isNull();
 
         // Registry should be empty (last reference released)
-        assertThat(SharedRedisClientRegistry.INSTANCE.registrySize()).isZero();
+        assertThat(TestFactoryAccess.sharedClientCount()).isZero();
     }
 
     @Test
@@ -179,44 +186,58 @@ class RedisCacheResourceTest {
         assertThat(clientField.get(resource1)).isSameAs(clientField.get(resource2));
 
         // Registry should have 1 entry (shared)
-        assertThat(SharedRedisClientRegistry.INSTANCE.registrySize()).isEqualTo(1);
+        assertThat(TestFactoryAccess.sharedClientCount()).isEqualTo(1);
 
         // Stop first resource — client should stay (still referenced by resource2)
         resource1.stop();
-        assertThat(SharedRedisClientRegistry.INSTANCE.registrySize()).isEqualTo(1);
+        assertThat(TestFactoryAccess.sharedClientCount()).isEqualTo(1);
 
         // Stop second resource — client should be closed
         resource2.stop();
-        assertThat(SharedRedisClientRegistry.INSTANCE.registrySize()).isZero();
+        assertThat(TestFactoryAccess.sharedClientCount()).isZero();
     }
 
     @Test
-    void should_build_connection_string_standalone() {
-        assertThat(RedisCacheResource.buildConnectionString("localhost", 6379, false)).isEqualTo("redis://localhost:6379");
-    }
+    void should_build_redis_client_options_standalone() throws Exception {
+        RedisCacheResourceConfiguration config = new RedisCacheResourceConfiguration();
+        config.setHost("redis.example.com");
+        config.setPort(6380);
+        config.setUseSsl(false);
 
-    @Test
-    void should_build_connection_string_with_ssl() {
-        assertThat(RedisCacheResource.buildConnectionString("redis.example.com", 6380, true)).isEqualTo("rediss://redis.example.com:6380");
+        RedisCacheResource resource = underTest(config);
+        resource.start();
+
+        Field optionsField = RedisCacheResource.class.getDeclaredField("redisClientOptions");
+        optionsField.setAccessible(true);
+        io.gravitee.plugin.configurations.redis.RedisClientOptions options =
+            (io.gravitee.plugin.configurations.redis.RedisClientOptions) optionsField.get(resource);
+        assertThat(options.getHost()).isEqualTo("redis.example.com");
+        assertThat(options.getPort()).isEqualTo(6380);
+        assertThat(options.isUseSsl()).isFalse();
+
+        resource.stop();
     }
 
     @Test
     void should_start_with_ssl_enabled() throws Exception {
         RedisCacheResourceConfiguration config = new RedisCacheResourceConfiguration();
         config.setUseSsl(true);
-        config.getStandalone().setHost("redis.example.com");
-        config.getStandalone().setPort(6380);
+        config.setHost("redis.example.com");
+        config.setPort(6380);
 
         RedisCacheResource resource = underTest(config);
         resource.start();
 
-        Field keyField = RedisCacheResource.class.getDeclaredField("registryKey");
-        keyField.setAccessible(true);
-        String key = (String) keyField.get(resource);
-        assertThat(key).contains("ssl=true").contains("redis.example.com").contains("6380");
+        Field optionsField = RedisCacheResource.class.getDeclaredField("redisClientOptions");
+        optionsField.setAccessible(true);
+        io.gravitee.plugin.configurations.redis.RedisClientOptions options =
+            (io.gravitee.plugin.configurations.redis.RedisClientOptions) optionsField.get(resource);
+        assertThat(options.isUseSsl()).isTrue();
+        assertThat(options.getHost()).isEqualTo("redis.example.com");
+        assertThat(options.getPort()).isEqualTo(6380);
 
         resource.stop();
-        assertThat(SharedRedisClientRegistry.INSTANCE.registrySize()).isZero();
+        assertThat(TestFactoryAccess.sharedClientCount()).isZero();
     }
 
     @Test
@@ -233,19 +254,19 @@ class RedisCacheResourceTest {
         RedisCacheResource resource = underTest(config);
         resource.start();
 
-        Field keyField = RedisCacheResource.class.getDeclaredField("registryKey");
-        keyField.setAccessible(true);
-        String key = (String) keyField.get(resource);
-        assertThat(key)
-            .startsWith("sentinel|")
-            .contains("mymaster")
-            .contains("sentinel1:26379")
-            .contains("sentinel2:26380")
-            .contains("sentinel-pass")
-            .contains("redis-pass");
+        Field optionsField = RedisCacheResource.class.getDeclaredField("redisClientOptions");
+        optionsField.setAccessible(true);
+        io.gravitee.plugin.configurations.redis.RedisClientOptions options =
+            (io.gravitee.plugin.configurations.redis.RedisClientOptions) optionsField.get(resource);
+        assertThat(options.getSentinel()).isNotNull();
+        assertThat(options.getSentinel().isEnabled()).isTrue();
+        assertThat(options.getSentinel().getMasterId()).isEqualTo("mymaster");
+        assertThat(options.getSentinel().getPassword()).isEqualTo("sentinel-pass");
+        assertThat(options.getSentinel().getNodes()).hasSize(2);
+        assertThat(options.getPassword()).isEqualTo("redis-pass");
 
         resource.stop();
-        assertThat(SharedRedisClientRegistry.INSTANCE.registrySize()).isZero();
+        assertThat(TestFactoryAccess.sharedClientCount()).isZero();
     }
 
     @Test
@@ -266,11 +287,199 @@ class RedisCacheResourceTest {
         Field clientField = RedisCacheResource.class.getDeclaredField("redisClient");
         clientField.setAccessible(true);
         assertThat(clientField.get(resource1)).isNotSameAs(clientField.get(resource2));
-        assertThat(SharedRedisClientRegistry.INSTANCE.registrySize()).isEqualTo(2);
+        assertThat(TestFactoryAccess.sharedClientCount()).isEqualTo(2);
 
         resource1.stop();
         resource2.stop();
-        assertThat(SharedRedisClientRegistry.INSTANCE.registrySize()).isZero();
+        assertThat(TestFactoryAccess.sharedClientCount()).isZero();
+    }
+
+    @Test
+    void should_share_client_when_only_pool_config_differs() throws Exception {
+        RedisCacheResourceConfiguration config1 = new RedisCacheResourceConfiguration();
+        config1.setMaxPoolSize(10);
+
+        RedisCacheResourceConfiguration config2 = new RedisCacheResourceConfiguration();
+        config2.setMaxPoolSize(20);
+
+        RedisCacheResource resource1 = underTest(config1);
+        RedisCacheResource resource2 = underTest(config2);
+
+        resource1.start();
+        resource2.start();
+
+        // Pool config is NOT part of the dedup key — same host/port/ssl/password → one client,
+        // first-acquire-wins for pool sizing (upstream VertxRedisClientFactory logs a warn).
+        Field clientField = RedisCacheResource.class.getDeclaredField("redisClient");
+        clientField.setAccessible(true);
+        assertThat(clientField.get(resource1)).isSameAs(clientField.get(resource2));
+        assertThat(TestFactoryAccess.sharedClientCount()).isEqualTo(1);
+
+        resource1.stop();
+        resource2.stop();
+        assertThat(TestFactoryAccess.sharedClientCount()).isZero();
+    }
+
+    @Test
+    void should_propagate_pool_settings_to_client_options() throws Exception {
+        RedisCacheResourceConfiguration config = new RedisCacheResourceConfiguration();
+        config.setMaxPoolSize(42);
+        config.setMaxPoolWaiting(43);
+        config.setPoolCleanerInterval(44);
+        config.setPoolRecycleTimeout(45);
+        config.setMaxWaitingHandlers(46);
+        config.setConnectTimeout(47);
+
+        RedisCacheResource resource = underTest(config);
+        resource.start();
+
+        Field optionsField = RedisCacheResource.class.getDeclaredField("redisClientOptions");
+        optionsField.setAccessible(true);
+        io.gravitee.plugin.configurations.redis.RedisClientOptions options =
+            (io.gravitee.plugin.configurations.redis.RedisClientOptions) optionsField.get(resource);
+        assertThat(options.getMaxPoolSize()).isEqualTo(42);
+        assertThat(options.getMaxPoolWaiting()).isEqualTo(43);
+        assertThat(options.getPoolCleanerInterval()).isEqualTo(44);
+        assertThat(options.getPoolRecycleTimeout()).isEqualTo(45);
+        assertThat(options.getMaxWaitingHandlers()).isEqualTo(46);
+        assertThat(options.getConnectTimeout()).isEqualTo(47);
+
+        resource.stop();
+    }
+
+    @Test
+    void should_default_to_trust_all_when_useSsl_and_no_ssl_options() throws Exception {
+        RedisCacheResourceConfiguration config = new RedisCacheResourceConfiguration();
+        config.setUseSsl(true);
+        // ssl intentionally null — exercises the backward-compat fallback
+
+        RedisCacheResource resource = underTest(config);
+        resource.start();
+
+        Field optionsField = RedisCacheResource.class.getDeclaredField("redisClientOptions");
+        optionsField.setAccessible(true);
+        io.gravitee.plugin.configurations.redis.RedisClientOptions options =
+            (io.gravitee.plugin.configurations.redis.RedisClientOptions) optionsField.get(resource);
+        assertThat(options.getSsl()).isNotNull();
+        assertThat(options.getSsl().isTrustAll()).isTrue();
+        assertThat(options.getSsl().isHostnameVerifier()).isFalse();
+
+        resource.stop();
+    }
+
+    @Test
+    void should_preserve_explicit_ssl_options_when_provided() throws Exception {
+        RedisCacheResourceConfiguration config = new RedisCacheResourceConfiguration();
+        config.setUseSsl(true);
+        SslOptions explicitSsl = new SslOptions();
+        explicitSsl.setTrustAll(false);
+        explicitSsl.setHostnameVerifier(true);
+        config.setSsl(explicitSsl);
+
+        RedisCacheResource resource = underTest(config);
+        resource.start();
+
+        Field optionsField = RedisCacheResource.class.getDeclaredField("redisClientOptions");
+        optionsField.setAccessible(true);
+        io.gravitee.plugin.configurations.redis.RedisClientOptions options =
+            (io.gravitee.plugin.configurations.redis.RedisClientOptions) optionsField.get(resource);
+        assertThat(options.getSsl()).isNotNull();
+        assertThat(options.getSsl().isTrustAll()).isFalse();
+        assertThat(options.getSsl().isHostnameVerifier()).isTrue();
+
+        resource.stop();
+    }
+
+    @Test
+    void should_not_detect_sentinel_when_enabled_but_nodes_empty() {
+        RedisCacheResourceConfiguration config = new RedisCacheResourceConfiguration();
+        config.getSentinel().setEnabled(true);
+        assertThat(config.isSentinelEnabled()).isFalse();
+    }
+
+    @Test
+    void should_not_detect_sentinel_when_nodes_present_but_disabled() {
+        RedisCacheResourceConfiguration config = new RedisCacheResourceConfiguration();
+        config.getSentinel().setEnabled(false);
+        config.getSentinel().getNodes().add(hostAndPort("s1", 26379));
+        assertThat(config.isSentinelEnabled()).isFalse();
+    }
+
+    @Test
+    void should_detect_sentinel_when_enabled_and_nodes_present() {
+        RedisCacheResourceConfiguration config = new RedisCacheResourceConfiguration();
+        config.getSentinel().setEnabled(true);
+        config.getSentinel().getNodes().add(hostAndPort("s1", 26379));
+        assertThat(config.isSentinelEnabled()).isTrue();
+    }
+
+    @Test
+    void should_deserialize_legacy_nested_standalone_config() throws Exception {
+        String json =
+            "{\"standalone\":{\"enabled\":true,\"host\":\"r.example\",\"port\":6380}," +
+            "\"maxTotal\":50,\"password\":\"pw\",\"useSsl\":false}";
+        RedisCacheResourceConfiguration cfg = new ObjectMapper().readValue(json, RedisCacheResourceConfiguration.class);
+
+        assertThat(cfg.getHost()).isEqualTo("r.example");
+        assertThat(cfg.getPort()).isEqualTo(6380);
+        assertThat(cfg.getPassword()).isEqualTo("pw");
+        assertThat(cfg.isUseSsl()).isFalse();
+        assertThat(cfg.isSentinelEnabled()).isFalse();
+    }
+
+    @Test
+    void should_honor_legacy_sentinel_mode_flag_regardless_of_property_order() throws Exception {
+        // sentinelMode BEFORE sentinel in the JSON — the transient legacy flag survives
+        // even if Jackson later replaces the sentinel object.
+        String jsonModeFirst =
+            "{\"sentinelMode\":true,\"sentinel\":{\"masterId\":\"m1\"," + "\"nodes\":[{\"host\":\"s1\",\"port\":26379}]}}";
+        RedisCacheResourceConfiguration cfgModeFirst = new ObjectMapper().readValue(jsonModeFirst, RedisCacheResourceConfiguration.class);
+        assertThat(cfgModeFirst.isSentinelEnabled()).isTrue();
+
+        // sentinelMode AFTER sentinel — also works.
+        String jsonModeLast =
+            "{\"sentinel\":{\"masterId\":\"m1\",\"nodes\":[{\"host\":\"s1\",\"port\":26379}]}," + "\"sentinelMode\":true}";
+        RedisCacheResourceConfiguration cfgModeLast = new ObjectMapper().readValue(jsonModeLast, RedisCacheResourceConfiguration.class);
+        assertThat(cfgModeLast.isSentinelEnabled()).isTrue();
+    }
+
+    @Test
+    void should_serialize_standalone_and_sentinel_mode_for_old_gateways() throws Exception {
+        RedisCacheResourceConfiguration cfg = new RedisCacheResourceConfiguration();
+        cfg.setHost("r.example");
+        cfg.setPort(6380);
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode node = mapper.readTree(mapper.writeValueAsString(cfg));
+
+        assertThat(node.path("standalone").path("host").asText()).isEqualTo("r.example");
+        assertThat(node.path("standalone").path("port").asInt()).isEqualTo(6380);
+        assertThat(node.path("standalone").path("enabled").asBoolean()).isTrue();
+        assertThat(node.path("sentinelMode").asBoolean()).isFalse();
+    }
+
+    @Test
+    void should_serialize_sentinel_mode_true_and_standalone_enabled_false_when_sentinel_active() throws Exception {
+        RedisCacheResourceConfiguration cfg = new RedisCacheResourceConfiguration();
+        cfg.getSentinel().setEnabled(true);
+        cfg.getSentinel().getNodes().add(hostAndPort("s1", 26379));
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode node = mapper.readTree(mapper.writeValueAsString(cfg));
+
+        assertThat(node.path("sentinelMode").asBoolean()).isTrue();
+        // When sentinel is active, the standalone.enabled flipper must output false
+        // so old gateways pick sentinel instead of connecting to standalone defaults.
+        assertThat(node.path("standalone").path("enabled").asBoolean()).isFalse();
+    }
+
+    @Test
+    void should_silently_ignore_legacy_maxTotal_on_deserialization() throws Exception {
+        String json = "{\"maxTotal\":200}";
+        RedisCacheResourceConfiguration cfg = new ObjectMapper().readValue(json, RedisCacheResourceConfiguration.class);
+
+        // maxPoolSize should remain at its default, not be 200
+        assertThat(cfg.getMaxPoolSize()).isNotEqualTo(200);
     }
 
     private static HostAndPort hostAndPort(String host, int port) {
