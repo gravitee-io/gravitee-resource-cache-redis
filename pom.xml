@@ -24,7 +24,7 @@
     <parent>
         <groupId>io.gravitee</groupId>
         <artifactId>gravitee-parent</artifactId>
-        <version>22.6.0</version>
+        <version>24.0.2</version>
     </parent>
 
     <groupId>io.gravitee.resource</groupId>
@@ -35,7 +35,8 @@
     <description>The resource is used to maintain a cache and link it to the API lifecycle. Redis provides a different range of persistence options, it means that the cache can keep data after reboot.</description>
 
     <properties>
-        <gravitee-apim.version>4.9.17-SNAPSHOT</gravitee-apim.version>
+        <gravitee-apim.version>4.12.0-SNAPSHOT</gravitee-apim.version>
+        <gravitee-plugin-common-configurations-maven-plugin.version>1.0.0</gravitee-plugin-common-configurations-maven-plugin.version>
 
         <properties-maven-plugin.version>1.2.1</properties-maven-plugin.version>
 
@@ -91,6 +92,24 @@
         <dependency>
             <groupId>io.gravitee.el</groupId>
             <artifactId>gravitee-expression-language</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.gravitee.node</groupId>
+            <artifactId>gravitee-node-vertx</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.gravitee.plugin</groupId>
+            <artifactId>gravitee-plugin-common-configurations</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.gravitee.node</groupId>
+            <artifactId>gravitee-node-logging</artifactId>
             <scope>provided</scope>
         </dependency>
 
@@ -243,6 +262,29 @@
                         <goals>
                             <goal>single</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.gravitee.plugin</groupId>
+                <artifactId>gravitee-plugin-common-configurations-maven-plugin</artifactId>
+                <version>${gravitee-plugin-common-configurations-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>bundle-schema-form</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>common-schema-form-bundle</goal>
+                        </goals>
+                        <configuration>
+                            <includeArtifacts>
+                                <include>io.gravitee.plugin:gravitee-plugin-common-configurations</include>
+                            </includeArtifacts>
+                            <includeSchemas>
+                                <include>schemas/**/schema-form-redis-client.json</include>
+                                <include>schemas/**/schema-form-ssl.json</include>
+                            </includeSchemas>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

@@ -2,20 +2,55 @@
     "type": "object",
     "$schema": "http://json-schema.org/draft-07/schema#",
     "properties": {
+        "host": {
+            "$ref": "#/gioExternalDefinitions/redisHost"
+        },
+        "port": {
+            "$ref": "#/gioExternalDefinitions/redisPort"
+        },
+        "password": {
+            "$ref": "#/gioExternalDefinitions/redisPassword"
+        },
+        "useSsl": {
+            "$ref": "#/gioExternalDefinitions/redisUseSsl",
+            "default": true
+        },
+        "ssl": {
+            "$ref": "#/gioExternalDefinitions/sslOptions",
+            "gioConfig": {
+                "displayIf": {
+                    "$eq": {
+                        "value.useSsl": true
+                    }
+                }
+            }
+        },
+        "sentinel": {
+            "$ref": "#/gioExternalDefinitions/redisSentinel"
+        },
+        "maxPoolSize": {
+            "$ref": "#/gioExternalDefinitions/redisMaxPoolSize"
+        },
+        "maxPoolWaiting": {
+            "$ref": "#/gioExternalDefinitions/redisMaxPoolWaiting"
+        },
+        "poolCleanerInterval": {
+            "$ref": "#/gioExternalDefinitions/redisPoolCleanerInterval"
+        },
+        "poolRecycleTimeout": {
+            "$ref": "#/gioExternalDefinitions/redisPoolRecycleTimeout"
+        },
+        "maxWaitingHandlers": {
+            "$ref": "#/gioExternalDefinitions/redisMaxWaitingHandlers"
+        },
+        "connectTimeout": {
+            "$ref": "#/gioExternalDefinitions/redisConnectTimeout"
+        },
         "releaseCache": {
             "title": "Release the cache when API is stopped?",
             "description": "If enabled, the resource will release the cache. If not, you will have to manage it by yourself on your Redis server.",
             "type": "boolean",
             "default": false
-        },
-        "password": {
-            "title": "Password",
-            "description": "The password of the instance. (Supports EL and secrets)",
-            "type": "string",
-            "writeOnly": true,
-            "gioConfig": {
-                "el": true
-            }
         },
         "timeToLiveSeconds": {
             "title": "Time to live (in seconds)",
@@ -30,195 +65,6 @@
             "type": "integer",
             "default": 2000,
             "minimum": 0
-        },
-        "useSsl": {
-            "title": "Use SSL",
-            "description": "Use SSL connections.",
-            "type": "boolean",
-            "default": true
-        },
-        "standalone": {
-            "type": "object",
-            "oneOf": [
-                {
-                    "title": "Configure standalone",
-                    "properties": {
-                        "enabled": {
-                            "const": true
-                        },
-                        "host": {
-                            "title": "Host",
-                            "description": "The host of the instance. (Supports EL)",
-                            "type": "string",
-                            "default": "localhost",
-                            "gioConfig": {
-                                "el": true
-                            }
-                        },
-                        "port": {
-                            "title": "Port",
-                            "description": "The port of the instance. (Supports EL)",
-                            "type": "integer",
-                            "default": 6379,
-                            "gioConfig": {
-                                "el": true
-                            }
-                        }
-                    },
-                    "required": ["host", "port"]
-                },
-                {
-                    "title": "Standalone disabled",
-                    "properties": {
-                        "enabled": {
-                            "const": false
-                        }
-                    }
-                }
-            ],
-            "default": {
-                "enabled": true
-            },
-            "gioConfig": {
-                "disableIf": {
-                    "$eq": {
-                        "value.sentinel.enabled": true
-                    }
-                }
-            }
-        },
-        "maxPoolSize": {
-            "title": "Max pool size",
-            "description": "Maximum number of connections in the pool. (Supports EL)",
-            "type": "integer",
-            "default": 6,
-            "gioConfig": {
-                "el": true
-            }
-        },
-        "maxPoolWaiting": {
-            "title": "Max pool waiting",
-            "description": "Maximum number of requests waiting for a connection from the pool. (Supports EL)",
-            "type": "integer",
-            "default": 1024,
-            "gioConfig": {
-                "el": true
-            }
-        },
-        "poolCleanerInterval": {
-            "title": "Pool cleaner interval (ms)",
-            "description": "Interval in milliseconds between pool cleaner runs. (Supports EL)",
-            "type": "integer",
-            "default": 30000,
-            "gioConfig": {
-                "el": true
-            }
-        },
-        "poolRecycleTimeout": {
-            "title": "Pool recycle timeout (ms)",
-            "description": "Timeout in milliseconds for recycling idle connections. (Supports EL)",
-            "type": "integer",
-            "default": 180000,
-            "gioConfig": {
-                "el": true
-            }
-        },
-        "maxWaitingHandlers": {
-            "title": "Max waiting handlers",
-            "description": "Maximum number of waiting handlers for the Redis client. (Supports EL)",
-            "type": "integer",
-            "default": 1024,
-            "gioConfig": {
-                "el": true
-            }
-        },
-        "connectTimeout": {
-            "title": "Connect timeout (ms)",
-            "description": "Maximum time in milliseconds to establish a connection. (Supports EL)",
-            "type": "integer",
-            "default": 2000,
-            "gioConfig": {
-                "el": true
-            }
-        },
-        "sentinel": {
-            "type": "object",
-            "oneOf": [
-                {
-                    "title": "Configure sentinel",
-                    "properties": {
-                        "enabled": {
-                            "const": true
-                        },
-                        "masterId": {
-                            "title": "Master",
-                            "description": "The sentinel master id. (Supports EL)",
-                            "type": "string",
-                            "default": "sentinel-master",
-                            "gioConfig": {
-                                "el": true
-                            }
-                        },
-                        "password": {
-                            "title": "Sentinel password",
-                            "description": "The sentinel password. (Supports EL and secrets)",
-                            "type": "string",
-                            "writeOnly": true,
-                            "gioConfig": {
-                                "el": true
-                            }
-                        },
-                        "nodes": {
-                            "type": "array",
-                            "title": "Sentinel nodes",
-                            "items": {
-                                "type": "object",
-                                "title": "Node",
-                                "properties": {
-                                    "host": {
-                                        "title": "The host of node",
-                                        "description": "(Supports EL)",
-                                        "type": "string",
-                                        "default": "localhost",
-                                        "gioConfig": {
-                                            "el": true
-                                        }
-                                    },
-                                    "port": {
-                                        "title": "The port of node",
-                                        "description": "(Supports EL)",
-                                        "type": "integer",
-                                        "default": 26379,
-                                        "gioConfig": {
-                                            "el": true
-                                        }
-                                    }
-                                },
-                                "required": ["host", "port"]
-                            },
-                            "default": [
-                                {
-                                    "host": "localhost",
-                                    "port": 26379
-                                }
-                            ]
-                        }
-                    },
-                    "required": ["masterId", "nodes"]
-                },
-                {
-                    "title": "Sentinel disabled",
-                    "description": "Sentinel provides high availability for Redis. In practical terms this means that using Sentinel you can create a Redis deployment that resists without human intervention certain kinds of failures.",
-                    "properties": {
-                        "enabled": {
-                            "const": false
-                        }
-                    }
-                }
-            ],
-            "default": {
-                "enabled": false
-            }
         }
     }
 }
