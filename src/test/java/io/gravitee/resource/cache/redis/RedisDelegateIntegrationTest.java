@@ -18,11 +18,15 @@ package io.gravitee.resource.cache.redis;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.resource.cache.api.Element;
 import io.vertx.core.Vertx;
+import io.vertx.redis.client.Command;
 import io.vertx.redis.client.Redis;
 import io.vertx.redis.client.RedisAPI;
 import io.vertx.redis.client.RedisOptions;
+import io.vertx.redis.client.Request;
+import io.vertx.redis.client.Response;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -119,16 +123,53 @@ class RedisDelegateIntegrationTest {
     }
 
     @Test
-    void should_clear_all_keys_for_cache_name() {
+    void clear_should_be_noop_when_releaseCache_false() {
         delegate.put(element("a", "1", 0));
         delegate.put(element("b", "2", 0));
-        delegate.put(element("c", "3", 0));
 
         delegate.clear();
 
-        assertThat(delegate.get("a")).isNull();
-        assertThat(delegate.get("b")).isNull();
-        assertThat(delegate.get("c")).isNull();
+        assertThat(delegate.get("a")).isNotNull();
+        assertThat(delegate.get("b")).isNotNull();
+    }
+
+    @Test
+    void clear_should_delete_only_current_deployment_keys_when_releaseCache_true() throws Exception {
+        RedisDelegate scopedDelegate = new RedisDelegate(
+            redisAPI,
+            "gravitee:",
+            Map.of(ExecutionContext.ATTR_API_DEPLOYED_AT, "deploy-A"),
+            60,
+            true,
+            2000L
+        );
+        RedisDelegate otherDeployment = new RedisDelegate(
+            redisAPI,
+            "gravitee:",
+            Map.of(ExecutionContext.ATTR_API_DEPLOYED_AT, "deploy-B"),
+            60,
+            true,
+            2000L
+        );
+
+        scopedDelegate.put(element("x", "1", 0));
+        otherDeployment.put(element("y", "2", 0));
+        redisClient
+            .send(Request.cmd(Command.SET).arg("unrelated:tenant:z").arg("kept"))
+            .toCompletionStage()
+            .toCompletableFuture()
+            .get(2, TimeUnit.SECONDS);
+
+        scopedDelegate.clear();
+
+        assertThat(scopedDelegate.get("x")).isNull();
+        assertThat(otherDeployment.get("y")).isNotNull();
+        Response survivor = redisClient
+            .send(Request.cmd(Command.GET).arg("unrelated:tenant:z"))
+            .toCompletionStage()
+            .toCompletableFuture()
+            .get(2, TimeUnit.SECONDS);
+        assertThat(survivor.toString()).isEqualTo("kept");
     }
 
     private static Element element(Object key, Object value, int ttl) {

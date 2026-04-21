@@ -33,9 +33,9 @@
 
     <fileSets>
 
-        <!-- Then include resource configuration schemas -->
+        <!-- Include processed schemas (after maven plugin bundling of gioExternalDefinitions) -->
         <fileSet>
-            <directory>src/main/resources/schemas</directory>
+            <directory>${project.build.outputDirectory}/schemas</directory>
             <outputDirectory>schemas</outputDirectory>
         </fileSet>
 

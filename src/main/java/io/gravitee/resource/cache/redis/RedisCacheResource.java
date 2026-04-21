@@ -19,21 +19,21 @@ import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.gateway.reactive.api.context.DeploymentContext;
 import io.gravitee.gateway.reactive.api.context.GenericExecutionContext;
 import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
+import io.gravitee.node.vertx.client.redis.VertxRedisClientFactory;
+import io.gravitee.plugin.configurations.redis.RedisClientOptions;
+import io.gravitee.plugin.configurations.redis.RedisSentinelOptions;
+import io.gravitee.plugin.configurations.ssl.SslOptions;
 import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.CacheResource;
-import io.gravitee.resource.cache.redis.configuration.HostAndPort;
 import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfiguration;
 import io.gravitee.resource.cache.redis.configuration.RedisCacheResourceConfigurationEvaluator;
 import io.vertx.core.Vertx;
 import io.vertx.redis.client.Redis;
 import io.vertx.redis.client.RedisAPI;
-import io.vertx.redis.client.RedisClientType;
-import io.vertx.redis.client.RedisOptions;
-import io.vertx.redis.client.RedisRole;
 import java.util.Map;
 import javax.inject.Inject;
+import lombok.CustomLog;
 import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
@@ -41,8 +41,10 @@ import org.springframework.context.ApplicationContextAware;
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
  * @author GraviteeSource Team
  */
-@Slf4j
+@CustomLog
 public class RedisCacheResource extends CacheResource<RedisCacheResourceConfiguration> implements ApplicationContextAware {
+
+    private static volatile VertxRedisClientFactory sharedFactory;
 
     @Setter
     private ApplicationContext applicationContext;
@@ -52,10 +54,9 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     private DeploymentContext deploymentContext;
 
     private RedisCacheResourceConfiguration configuration;
-    private RedisCacheGlobalOptions globalOptions;
     private volatile Redis redisClient;
     private volatile RedisAPI redisAPI;
-    private String registryKey;
+    private RedisClientOptions redisClientOptions;
 
     @Override
     public RedisCacheResourceConfiguration configuration() {
@@ -71,23 +72,15 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
         log.debug("Create redis cache resource");
 
         configuration = new RedisCacheResourceConfigurationEvaluator(configuration()).evalNow(deploymentContext);
-        globalOptions = new RedisCacheGlobalOptions(applicationContext.getEnvironment());
 
-        Vertx vertx = applicationContext.getBean(Vertx.class);
-
-        registryKey = SharedRedisClientRegistry.buildKey(configuration);
-
-        redisClient = SharedRedisClientRegistry.INSTANCE.acquire(registryKey, () -> {
-            RedisOptions options = buildRedisOptions();
-            return Redis.createClient(vertx, options);
-        });
+        redisClientOptions = buildRedisClientOptions();
+        redisClient = getOrCreateFactory().acquire(redisClientOptions);
 
         try {
             redisAPI = RedisAPI.api(redisClient);
         } catch (Exception e) {
-            // Ensure we don't leak a refcount if anything after acquire() fails
-            SharedRedisClientRegistry.INSTANCE.release(registryKey);
-            registryKey = null;
+            getOrCreateFactory().release(redisClientOptions);
+            redisClientOptions = null;
             redisClient = null;
             throw e;
         }
@@ -96,10 +89,10 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     @Override
     protected void doStop() throws Exception {
         super.doStop();
-        if (registryKey != null) {
-            log.debug("Releasing shared Redis client for key [{}]", registryKey);
-            SharedRedisClientRegistry.INSTANCE.release(registryKey);
-            registryKey = null;
+        if (redisClientOptions != null) {
+            log.debug("Releasing shared Redis client");
+            getOrCreateFactory().release(redisClientOptions);
+            redisClientOptions = null;
             redisClient = null;
             redisAPI = null;
         }
@@ -111,9 +104,6 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     }
 
     /**
-     * Gets a cache
-     * @param ctx the context
-     * @return a cache
      * @deprecated use {@link #getCache(BaseExecutionContext)} instead
      */
     @Override
@@ -143,50 +133,86 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
         );
     }
 
-    private RedisOptions buildRedisOptions() {
-        RedisOptions options = new RedisOptions();
-        boolean ssl = configuration.isUseSsl();
-        boolean isSentinel = configuration.getSentinel().isEnabled() || configuration.isSentinelMode();
+    private RedisClientOptions buildRedisClientOptions() {
+        RedisClientOptions.RedisClientOptionsBuilder builder = RedisClientOptions.builder();
 
-        if (isSentinel) {
-            options.setType(RedisClientType.SENTINEL);
-            for (HostAndPort node : configuration.getSentinel().getNodes()) {
-                options.addConnectionString(buildConnectionString(node.getHost(), node.getPort(), ssl));
-            }
-            options.setMasterName(configuration.getSentinel().getMasterId());
-            options.setRole(RedisRole.MASTER);
-            String sentinelPassword = configuration.getSentinel().getPassword();
-            if (sentinelPassword != null && !sentinelPassword.isEmpty()) {
-                options.setPassword(sentinelPassword);
-            }
-        } else {
-            options.setType(RedisClientType.STANDALONE);
-            options.setConnectionString(
-                buildConnectionString(configuration.getStandalone().getHost(), configuration.getStandalone().getPort(), ssl)
+        builder.host(configuration.getHost());
+        builder.port(configuration.getPort());
+        builder.password(configuration.getPassword());
+        builder.useSsl(configuration.isUseSsl());
+
+        if (configuration.isSentinelEnabled()) {
+            var sentinelConfig = configuration.getSentinel();
+            builder.sentinel(
+                RedisSentinelOptions.builder()
+                    .masterId(sentinelConfig.getMasterId())
+                    .password(sentinelConfig.getPassword())
+                    .nodes(
+                        sentinelConfig
+                            .getNodes()
+                            .stream()
+                            .map(n ->
+                                io.gravitee.plugin.configurations.redis.HostAndPort.builder().host(n.getHost()).port(n.getPort()).build()
+                            )
+                            .toList()
+                    )
+                    .build()
             );
-            String password = configuration.getPassword();
-            if (password != null && !password.isEmpty()) {
-                options.setPassword(password);
+        }
+
+        if (configuration.isUseSsl()) {
+            SslOptions sslOptions = configuration.getSsl();
+            if (sslOptions == null) {
+                // Backward compat: old configs without an explicit ssl block fall back to
+                // trustAll + hostnameVerifier=false. Silently permissive — warn loudly so
+                // operators upgrading can opt in to real certificate validation.
+                log.warn(
+                    "Redis cache resource has useSsl=true but no 'ssl' options configured (host={}:{}). " +
+                        "Falling back to trustAll=true and hostnameVerifier=false — this bypasses TLS certificate validation. " +
+                        "Configure 'ssl.trustStore' and 'ssl.hostnameVerifier' on the resource to harden.",
+                    configuration.getHost(),
+                    configuration.getPort()
+                );
+                sslOptions = new SslOptions();
+                sslOptions.setTrustAll(true);
+                sslOptions.setHostnameVerifier(false);
             }
+            builder.ssl(sslOptions);
         }
 
-        if (ssl) {
-            options.getNetClientOptions().setSsl(true).setTrustAll(true);
-            options.getNetClientOptions().setHostnameVerificationAlgorithm("");
-        }
+        builder.maxPoolSize(configuration.getMaxPoolSize());
+        builder.maxPoolWaiting(configuration.getMaxPoolWaiting());
+        builder.poolCleanerInterval(configuration.getPoolCleanerInterval());
+        builder.poolRecycleTimeout(configuration.getPoolRecycleTimeout());
+        builder.maxWaitingHandlers(configuration.getMaxWaitingHandlers());
+        builder.connectTimeout(configuration.getConnectTimeout());
 
-        options.setMaxPoolSize(globalOptions.getMaxPoolSize());
-        options.setMaxPoolWaiting(globalOptions.getMaxPoolWaiting());
-        options.setPoolCleanerInterval(globalOptions.getPoolCleanerInterval());
-        options.setPoolRecycleTimeout(globalOptions.getPoolRecycleTimeout());
-        options.setMaxWaitingHandlers(globalOptions.getMaxWaitingHandlers());
-        options.getNetClientOptions().setConnectTimeout(globalOptions.getConnectTimeout());
-
-        return options;
+        return builder.build();
     }
 
-    static String buildConnectionString(String host, int port, boolean ssl) {
-        String scheme = ssl ? "rediss" : "redis";
-        return scheme + "://" + host + ":" + port;
+    private VertxRedisClientFactory getOrCreateFactory() {
+        if (sharedFactory == null) {
+            synchronized (RedisCacheResource.class) {
+                if (sharedFactory == null) {
+                    sharedFactory = new VertxRedisClientFactory(applicationContext.getBean(Vertx.class));
+                }
+            }
+        }
+        return sharedFactory;
+    }
+
+    /**
+     * Test-only. Drops the static factory reference so each test starts from a clean
+     * ref-count baseline. Callers must ensure every preceding {@code acquire} was matched
+     * by a {@code release} — resetting with live references in flight silently leaks the
+     * underlying Vert.x clients. Pair with an {@code @AfterEach} drain assertion.
+     */
+    static void resetSharedFactory() {
+        sharedFactory = null;
+    }
+
+    // Visible for testing
+    static VertxRedisClientFactory getSharedFactory() {
+        return sharedFactory;
     }
 }
