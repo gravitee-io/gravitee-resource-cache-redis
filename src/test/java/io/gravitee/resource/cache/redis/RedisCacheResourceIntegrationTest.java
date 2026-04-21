@@ -31,6 +31,7 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationContext;
 import org.testcontainers.containers.GenericContainer;
@@ -65,9 +66,14 @@ class RedisCacheResourceIntegrationTest {
         vertx.close();
     }
 
+    @BeforeEach
+    void resetFactory() {
+        RedisCacheResource.resetSharedFactory();
+    }
+
     @AfterEach
     void assertRegistryDrained() {
-        assertThat(SharedRedisClientRegistry.INSTANCE.registrySize()).as("Registry should be empty after each test").isZero();
+        assertThat(TestFactoryAccess.sharedClientCount()).as("Registry should be empty after each test").isZero();
     }
 
     @Test
@@ -105,7 +111,7 @@ class RedisCacheResourceIntegrationTest {
         resource1.start();
         resource2.start();
 
-        assertThat(SharedRedisClientRegistry.INSTANCE.registrySize()).as("Both resources should share one client").isEqualTo(1);
+        assertThat(TestFactoryAccess.sharedClientCount()).as("Both resources should share one client").isEqualTo(1);
 
         // Put via resource1, read via resource2 — proves they share the same backend
         resource1.getCache(emptyCtx()).put(element("shared-key", "shared-value"));
@@ -116,7 +122,7 @@ class RedisCacheResourceIntegrationTest {
 
         // Stop one -> client still alive (refcount=1)
         resource1.stop();
-        assertThat(SharedRedisClientRegistry.INSTANCE.registrySize()).isEqualTo(1);
+        assertThat(TestFactoryAccess.sharedClientCount()).isEqualTo(1);
 
         // resource2 still works
         assertThat(resource2.getCache(emptyCtx()).get("shared-key")).isNotNull();
@@ -134,13 +140,13 @@ class RedisCacheResourceIntegrationTest {
             resource.stop();
         }
 
-        assertThat(SharedRedisClientRegistry.INSTANCE.registrySize()).isZero();
+        assertThat(TestFactoryAccess.sharedClientCount()).isZero();
     }
 
     private RedisCacheResourceConfiguration configWithPassword(String password) {
         RedisCacheResourceConfiguration config = new RedisCacheResourceConfiguration();
-        config.getStandalone().setHost(REDIS.getHost());
-        config.getStandalone().setPort(REDIS.getMappedPort(6379));
+        config.setHost(REDIS.getHost());
+        config.setPort(REDIS.getMappedPort(6379));
         config.setPassword(password);
         // Testcontainers Redis is plain TCP — override the SSL default
         config.setUseSsl(false);
