@@ -23,7 +23,8 @@ Current implementation of the cache resource is based on https://redis.io/[Redis
 |===
 | Plugin version | APIM version
 
-| 4.0            | 4.6 to latest
+| 5.0            | 4.12 to latest
+| 4.0            | 4.6 to 4.11
 | 3.0            | DO NOT USE
 | 2.0            | 4.5 to latest
 | 1.5            | 4.0 to 4.4
