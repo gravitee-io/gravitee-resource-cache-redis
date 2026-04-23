@@ -180,6 +180,15 @@ class RedisCacheResourceIntegrationTest {
     private ApplicationContext mockApplicationContext() {
         ApplicationContext ctx = mock(ApplicationContext.class);
         when(ctx.getBean(Vertx.class)).thenReturn(vertx);
+        org.springframework.core.env.Environment env = mock(org.springframework.core.env.Environment.class);
+        when(
+            env.getProperty(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(Integer.class),
+                org.mockito.ArgumentMatchers.anyInt()
+            )
+        ).thenAnswer(inv -> inv.getArgument(2));
+        when(ctx.getEnvironment()).thenReturn(env);
         return ctx;
     }
 }

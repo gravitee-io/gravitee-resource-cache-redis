@@ -52,6 +52,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     private DeploymentContext deploymentContext;
 
     private RedisCacheResourceConfiguration configuration;
+    private RedisCacheGlobalOptions globalOptions;
     private volatile Redis redisClient;
     private volatile RedisAPI redisAPI;
     private String registryKey;
@@ -70,12 +71,13 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
         log.debug("Create redis cache resource");
 
         configuration = new RedisCacheResourceConfigurationEvaluator(configuration()).evalNow(deploymentContext);
+        globalOptions = new RedisCacheGlobalOptions(applicationContext.getEnvironment());
 
         Vertx vertx = applicationContext.getBean(Vertx.class);
 
         registryKey = SharedRedisClientRegistry.buildKey(configuration);
 
-        redisClient = SharedRedisClientRegistry.INSTANCE.acquire(registryKey, configuration, () -> {
+        redisClient = SharedRedisClientRegistry.INSTANCE.acquire(registryKey, () -> {
             RedisOptions options = buildRedisOptions();
             return Redis.createClient(vertx, options);
         });
@@ -173,12 +175,12 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
             options.getNetClientOptions().setHostnameVerificationAlgorithm("");
         }
 
-        options.setMaxPoolSize(configuration.getMaxPoolSize());
-        options.setMaxPoolWaiting(configuration.getMaxPoolWaiting());
-        options.setPoolCleanerInterval(configuration.getPoolCleanerInterval());
-        options.setPoolRecycleTimeout(configuration.getPoolRecycleTimeout());
-        options.setMaxWaitingHandlers(configuration.getMaxWaitingHandlers());
-        options.getNetClientOptions().setConnectTimeout(configuration.getConnectTimeout());
+        options.setMaxPoolSize(globalOptions.getMaxPoolSize());
+        options.setMaxPoolWaiting(globalOptions.getMaxPoolWaiting());
+        options.setPoolCleanerInterval(globalOptions.getPoolCleanerInterval());
+        options.setPoolRecycleTimeout(globalOptions.getPoolRecycleTimeout());
+        options.setMaxWaitingHandlers(globalOptions.getMaxWaitingHandlers());
+        options.getNetClientOptions().setConnectTimeout(globalOptions.getConnectTimeout());
 
         return options;
     }
