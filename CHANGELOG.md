@@ -1,3 +1,10 @@
+## [4.2.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.2.0...4.2.1) (2026-04-23)
+
+
+### Bug Fixes
+
+* **redis-cache:** move pool/timeout config to gravitee.yml (revert 6b98fb9) ([7696155](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/7696155c14c17dae201e0889d46442616c1020d6))
+
 # [4.2.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.1.0...4.2.0) (2026-04-16)
 
 
