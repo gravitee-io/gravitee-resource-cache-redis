@@ -17,6 +17,7 @@ package io.gravitee.resource.cache.redis;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.gravitee.plugin.configurations.redis.RedisClientOptions;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
@@ -34,15 +35,15 @@ import org.springframework.core.env.StandardEnvironment;
 class RedisCacheGlobalOptionsTest {
 
     @Test
-    void should_use_hard_coded_defaults_when_no_properties_are_set() {
+    void should_use_upstream_defaults_when_no_properties_are_set() {
         var options = new RedisCacheGlobalOptions(new StandardEnvironment());
 
-        assertThat(options.getMaxPoolSize()).isEqualTo(6);
-        assertThat(options.getMaxPoolWaiting()).isEqualTo(1024);
-        assertThat(options.getPoolCleanerInterval()).isEqualTo(30000);
-        assertThat(options.getPoolRecycleTimeout()).isEqualTo(180000);
-        assertThat(options.getMaxWaitingHandlers()).isEqualTo(1024);
-        assertThat(options.getConnectTimeout()).isEqualTo(2000);
+        assertThat(options.getMaxPoolSize()).isEqualTo(RedisClientOptions.DEFAULT_MAX_POOL_SIZE);
+        assertThat(options.getMaxPoolWaiting()).isEqualTo(RedisClientOptions.DEFAULT_MAX_POOL_WAITING);
+        assertThat(options.getPoolCleanerInterval()).isEqualTo(RedisClientOptions.DEFAULT_POOL_CLEANER_INTERVAL);
+        assertThat(options.getPoolRecycleTimeout()).isEqualTo(RedisClientOptions.DEFAULT_POOL_RECYCLE_TIMEOUT);
+        assertThat(options.getMaxWaitingHandlers()).isEqualTo(RedisClientOptions.DEFAULT_MAX_WAITING_HANDLERS);
+        assertThat(options.getConnectTimeout()).isEqualTo(RedisClientOptions.DEFAULT_CONNECT_TIMEOUT);
     }
 
     @Test

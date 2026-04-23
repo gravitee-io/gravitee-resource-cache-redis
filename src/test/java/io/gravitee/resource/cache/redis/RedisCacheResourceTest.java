@@ -37,6 +37,7 @@ import io.vertx.redis.client.Redis;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.*;
 import org.springframework.context.ApplicationContext;
 
@@ -295,42 +296,25 @@ class RedisCacheResourceTest {
     }
 
     @Test
-    void should_share_client_when_only_pool_config_differs() throws Exception {
-        RedisCacheResourceConfiguration config1 = new RedisCacheResourceConfiguration();
-        config1.setMaxPoolSize(10);
-
-        RedisCacheResourceConfiguration config2 = new RedisCacheResourceConfiguration();
-        config2.setMaxPoolSize(20);
-
-        RedisCacheResource resource1 = underTest(config1);
-        RedisCacheResource resource2 = underTest(config2);
-
-        resource1.start();
-        resource2.start();
-
-        // Pool config is NOT part of the dedup key — same host/port/ssl/password → one client,
-        // first-acquire-wins for pool sizing (upstream VertxRedisClientFactory logs a warn).
-        Field clientField = RedisCacheResource.class.getDeclaredField("redisClient");
-        clientField.setAccessible(true);
-        assertThat(clientField.get(resource1)).isSameAs(clientField.get(resource2));
-        assertThat(TestFactoryAccess.sharedClientCount()).isEqualTo(1);
-
-        resource1.stop();
-        resource2.stop();
-        assertThat(TestFactoryAccess.sharedClientCount()).isZero();
-    }
-
-    @Test
-    void should_propagate_pool_settings_to_client_options() throws Exception {
+    void should_propagate_global_pool_settings_to_client_options() throws Exception {
         RedisCacheResourceConfiguration config = new RedisCacheResourceConfiguration();
-        config.setMaxPoolSize(42);
-        config.setMaxPoolWaiting(43);
-        config.setPoolCleanerInterval(44);
-        config.setPoolRecycleTimeout(45);
-        config.setMaxWaitingHandlers(46);
-        config.setConnectTimeout(47);
-
-        RedisCacheResource resource = underTest(config);
+        RedisCacheResource resource = underTestWithGlobalOptions(
+            config,
+            Map.of(
+                "resources.cacheRedis.maxPoolSize",
+                42,
+                "resources.cacheRedis.maxPoolWaiting",
+                43,
+                "resources.cacheRedis.poolCleanerInterval",
+                44,
+                "resources.cacheRedis.poolRecycleTimeout",
+                45,
+                "resources.cacheRedis.maxWaitingHandlers",
+                46,
+                "resources.cacheRedis.connectTimeout",
+                47
+            )
+        );
         resource.start();
 
         Field optionsField = RedisCacheResource.class.getDeclaredField("redisClientOptions");
@@ -475,11 +459,11 @@ class RedisCacheResourceTest {
 
     @Test
     void should_silently_ignore_legacy_maxTotal_on_deserialization() throws Exception {
-        String json = "{\"maxTotal\":200}";
+        // Deserialization must not fail with unknown/legacy fields; pool settings now live in
+        // gravitee.yml, not on the per-resource config.
+        String json = "{\"maxTotal\":200,\"maxPoolSize\":999,\"connectTimeout\":7777}";
         RedisCacheResourceConfiguration cfg = new ObjectMapper().readValue(json, RedisCacheResourceConfiguration.class);
-
-        // maxPoolSize should remain at its default, not be 200
-        assertThat(cfg.getMaxPoolSize()).isNotEqualTo(200);
+        assertThat(cfg).isNotNull();
     }
 
     private static HostAndPort hostAndPort(String host, int port) {
@@ -494,16 +478,21 @@ class RedisCacheResourceTest {
     }
 
     RedisCacheResource underTest(RedisCacheResourceConfiguration config) throws IllegalAccessException, NoSuchFieldException {
+        return underTestWithGlobalOptions(config, java.util.Map.of());
+    }
+
+    RedisCacheResource underTestWithGlobalOptions(RedisCacheResourceConfiguration config, java.util.Map<String, Integer> globalOverrides)
+        throws IllegalAccessException, NoSuchFieldException {
         RedisCacheResource redisCacheResource = new RedisCacheResource();
         Field configurationField = AbstractConfigurableResource.class.getDeclaredField("configuration");
         configurationField.setAccessible(true);
         configurationField.set(redisCacheResource, config);
         redisCacheResource.setDeploymentContext(new TestDeploymentContext(templateEngine));
-        redisCacheResource.setApplicationContext(mockApplicationContext());
+        redisCacheResource.setApplicationContext(mockApplicationContext(globalOverrides));
         return redisCacheResource;
     }
 
-    private ApplicationContext mockApplicationContext() {
+    private ApplicationContext mockApplicationContext(java.util.Map<String, Integer> globalOverrides) {
         ApplicationContext ctx = mock(ApplicationContext.class);
         when(ctx.getBean(Vertx.class)).thenReturn(vertx);
         org.springframework.core.env.Environment env = mock(org.springframework.core.env.Environment.class);
@@ -513,7 +502,11 @@ class RedisCacheResourceTest {
                 org.mockito.ArgumentMatchers.eq(Integer.class),
                 org.mockito.ArgumentMatchers.anyInt()
             )
-        ).thenAnswer(inv -> inv.getArgument(2));
+        ).thenAnswer(inv -> {
+            String key = inv.getArgument(0);
+            Integer override = globalOverrides.get(key);
+            return override != null ? override : inv.getArgument(2);
+        });
         when(ctx.getEnvironment()).thenReturn(env);
         return ctx;
     }
