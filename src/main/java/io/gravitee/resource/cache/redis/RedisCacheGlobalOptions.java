@@ -15,6 +15,7 @@
  */
 package io.gravitee.resource.cache.redis;
 
+import io.gravitee.plugin.configurations.redis.RedisClientOptions;
 import lombok.Getter;
 import org.springframework.core.env.Environment;
 
@@ -23,12 +24,12 @@ import org.springframework.core.env.Environment;
  * under the {@code resources.cacheRedis.*} prefix.
  *
  * <p>These fields are connection-pool and timeout settings that must be uniform
- * across every {@code cache-redis} resource targeting the same Redis endpoint,
- * because a single shared Vert.x {@link io.vertx.redis.client.Redis} client is
- * used for all of them (see {@link SharedRedisClientRegistry}) and Vert.x does
- * not support runtime pool resize. Placing them in {@code gravitee.yml} instead
- * of per-resource JSON means they really are global — there is no UI field that
- * looks editable but is silently ignored.
+ * across every {@code cache-redis} resource targeting the same Redis endpoint.
+ * The shared {@link io.gravitee.node.vertx.client.redis.VertxRedisClientFactory}
+ * dedups by connection tuple; Vert.x Redis does not support runtime pool resize.
+ * Placing the pool/timeout settings in {@code gravitee.yml} instead of per-resource
+ * JSON means they really are global — there is no UI field that looks editable but
+ * is silently ignored.
  *
  * <p>Example {@code gravitee.yml}:
  * <pre>
@@ -55,11 +56,27 @@ public final class RedisCacheGlobalOptions {
     private final int connectTimeout;
 
     public RedisCacheGlobalOptions(Environment environment) {
-        this.maxPoolSize = environment.getProperty(PREFIX + "maxPoolSize", Integer.class, 6);
-        this.maxPoolWaiting = environment.getProperty(PREFIX + "maxPoolWaiting", Integer.class, 1024);
-        this.poolCleanerInterval = environment.getProperty(PREFIX + "poolCleanerInterval", Integer.class, 30000);
-        this.poolRecycleTimeout = environment.getProperty(PREFIX + "poolRecycleTimeout", Integer.class, 180000);
-        this.maxWaitingHandlers = environment.getProperty(PREFIX + "maxWaitingHandlers", Integer.class, 1024);
-        this.connectTimeout = environment.getProperty(PREFIX + "connectTimeout", Integer.class, 2000);
+        this.maxPoolSize = environment.getProperty(PREFIX + "maxPoolSize", Integer.class, RedisClientOptions.DEFAULT_MAX_POOL_SIZE);
+        this.maxPoolWaiting = environment.getProperty(
+            PREFIX + "maxPoolWaiting",
+            Integer.class,
+            RedisClientOptions.DEFAULT_MAX_POOL_WAITING
+        );
+        this.poolCleanerInterval = environment.getProperty(
+            PREFIX + "poolCleanerInterval",
+            Integer.class,
+            RedisClientOptions.DEFAULT_POOL_CLEANER_INTERVAL
+        );
+        this.poolRecycleTimeout = environment.getProperty(
+            PREFIX + "poolRecycleTimeout",
+            Integer.class,
+            RedisClientOptions.DEFAULT_POOL_RECYCLE_TIMEOUT
+        );
+        this.maxWaitingHandlers = environment.getProperty(
+            PREFIX + "maxWaitingHandlers",
+            Integer.class,
+            RedisClientOptions.DEFAULT_MAX_WAITING_HANDLERS
+        );
+        this.connectTimeout = environment.getProperty(PREFIX + "connectTimeout", Integer.class, RedisClientOptions.DEFAULT_CONNECT_TIMEOUT);
     }
 }

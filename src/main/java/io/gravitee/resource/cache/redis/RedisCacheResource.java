@@ -54,6 +54,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
     private DeploymentContext deploymentContext;
 
     private RedisCacheResourceConfiguration configuration;
+    private RedisCacheGlobalOptions globalOptions;
     private volatile Redis redisClient;
     private volatile RedisAPI redisAPI;
     private RedisClientOptions redisClientOptions;
@@ -72,6 +73,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
         log.debug("Create redis cache resource");
 
         configuration = new RedisCacheResourceConfigurationEvaluator(configuration()).evalNow(deploymentContext);
+        globalOptions = new RedisCacheGlobalOptions(applicationContext.getEnvironment());
 
         redisClientOptions = buildRedisClientOptions();
         redisClient = getOrCreateFactory().acquire(redisClientOptions);
@@ -180,12 +182,12 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
             builder.ssl(sslOptions);
         }
 
-        builder.maxPoolSize(configuration.getMaxPoolSize());
-        builder.maxPoolWaiting(configuration.getMaxPoolWaiting());
-        builder.poolCleanerInterval(configuration.getPoolCleanerInterval());
-        builder.poolRecycleTimeout(configuration.getPoolRecycleTimeout());
-        builder.maxWaitingHandlers(configuration.getMaxWaitingHandlers());
-        builder.connectTimeout(configuration.getConnectTimeout());
+        builder.maxPoolSize(globalOptions.getMaxPoolSize());
+        builder.maxPoolWaiting(globalOptions.getMaxPoolWaiting());
+        builder.poolCleanerInterval(globalOptions.getPoolCleanerInterval());
+        builder.poolRecycleTimeout(globalOptions.getPoolRecycleTimeout());
+        builder.maxWaitingHandlers(globalOptions.getMaxWaitingHandlers());
+        builder.connectTimeout(globalOptions.getConnectTimeout());
 
         return builder.build();
     }
