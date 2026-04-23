@@ -1,3 +1,16 @@
+# [5.0.0-alpha.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.2.0...5.0.0-alpha.1) (2026-04-23)
+
+
+* feat(redis-cache)!: require java 21 and apim 4.12 ([7e04312](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/7e04312912dd63679b3734bf6d30384503f64878))
+
+
+### BREAKING CHANGES
+
+* plugin requires Java 21 at runtime and APIM 4.12+.
+gravitee-parent 22.6.0 -> 24.0.2 raises the compile target from Java 17 to 21.
+gravitee-apim BOM is pinned to 4.12.0-SNAPSHOT for the new VertxRedisClientFactory
+client-sharing contract.
+
 # [4.2.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.1.0...4.2.0) (2026-04-16)
 
 
