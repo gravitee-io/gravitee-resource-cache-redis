@@ -28,24 +28,6 @@
         "sentinel": {
             "$ref": "#/gioExternalDefinitions/redisSentinel"
         },
-        "maxPoolSize": {
-            "$ref": "#/gioExternalDefinitions/redisMaxPoolSize"
-        },
-        "maxPoolWaiting": {
-            "$ref": "#/gioExternalDefinitions/redisMaxPoolWaiting"
-        },
-        "poolCleanerInterval": {
-            "$ref": "#/gioExternalDefinitions/redisPoolCleanerInterval"
-        },
-        "poolRecycleTimeout": {
-            "$ref": "#/gioExternalDefinitions/redisPoolRecycleTimeout"
-        },
-        "maxWaitingHandlers": {
-            "$ref": "#/gioExternalDefinitions/redisMaxWaitingHandlers"
-        },
-        "connectTimeout": {
-            "$ref": "#/gioExternalDefinitions/redisConnectTimeout"
-        },
         "releaseCache": {
             "title": "Release the cache when API is stopped?",
             "description": "If enabled, the resource will release the cache. If not, you will have to manage it by yourself on your Redis server.",
