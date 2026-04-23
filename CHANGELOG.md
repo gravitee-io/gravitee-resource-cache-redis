@@ -1,3 +1,10 @@
+# [5.0.0-alpha.2](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/5.0.0-alpha.1...5.0.0-alpha.2) (2026-04-23)
+
+
+### Bug Fixes
+
+* **redis-cache:** move pool/timeout config to gravitee.yml (revert 6b98fb9) ([b3bed9c](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/b3bed9cbd7934dd052c33ef64d38579c49bf4ed7))
+
 # [5.0.0-alpha.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.2.0...5.0.0-alpha.1) (2026-04-23)
 
 
