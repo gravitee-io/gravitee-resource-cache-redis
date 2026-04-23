@@ -17,9 +17,9 @@ package io.gravitee.resource.cache.redis.configuration;
 
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import io.gravitee.plugin.annotation.ConfigurationEvaluator;
-import io.gravitee.plugin.configurations.redis.RedisClientOptions;
 import io.gravitee.plugin.configurations.ssl.SslOptions;
 import io.gravitee.resource.api.ResourceConfiguration;
 import io.gravitee.secrets.api.annotation.Secret;
@@ -37,6 +37,7 @@ import lombok.Setter;
 @ConfigurationEvaluator
 @Getter
 @Setter
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class RedisCacheResourceConfiguration implements ResourceConfiguration {
 
     // Redis connection fields (aligned with RedisClientOptions shape)
@@ -49,14 +50,6 @@ public class RedisCacheResourceConfiguration implements ResourceConfiguration {
     private boolean useSsl = true;
     private SslOptions ssl;
     private RedisSentinelConfiguration sentinel = new RedisSentinelConfiguration();
-
-    // Pool settings (per-API; shared clients use first-acquire-wins, mismatches logged as warning)
-    private int maxPoolSize = RedisClientOptions.DEFAULT_MAX_POOL_SIZE;
-    private int maxPoolWaiting = RedisClientOptions.DEFAULT_MAX_POOL_WAITING;
-    private int poolCleanerInterval = RedisClientOptions.DEFAULT_POOL_CLEANER_INTERVAL;
-    private int poolRecycleTimeout = RedisClientOptions.DEFAULT_POOL_RECYCLE_TIMEOUT;
-    private int maxWaitingHandlers = RedisClientOptions.DEFAULT_MAX_WAITING_HANDLERS;
-    private int connectTimeout = RedisClientOptions.DEFAULT_CONNECT_TIMEOUT;
 
     // Cache-specific fields
     private long timeToLiveSeconds;
