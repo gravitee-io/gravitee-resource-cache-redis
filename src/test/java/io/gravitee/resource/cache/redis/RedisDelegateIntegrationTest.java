@@ -68,7 +68,7 @@ class RedisDelegateIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        delegate = new RedisDelegate(redisAPI, "gravitee:", Map.of(), 60, false, 2000L);
+        delegate = new RedisDelegate(redisClient, "gravitee:", Map.of(), 60, false, 2000L);
     }
 
     @AfterEach
@@ -136,7 +136,7 @@ class RedisDelegateIntegrationTest {
     @Test
     void clear_should_delete_only_current_deployment_keys_when_releaseCache_true() throws Exception {
         RedisDelegate scopedDelegate = new RedisDelegate(
-            redisAPI,
+            redisClient,
             "gravitee:",
             Map.of(ExecutionContext.ATTR_API_DEPLOYED_AT, "deploy-A"),
             60,
@@ -144,7 +144,7 @@ class RedisDelegateIntegrationTest {
             2000L
         );
         RedisDelegate otherDeployment = new RedisDelegate(
-            redisAPI,
+            redisClient,
             "gravitee:",
             Map.of(ExecutionContext.ATTR_API_DEPLOYED_AT, "deploy-B"),
             60,
@@ -170,6 +170,92 @@ class RedisDelegateIntegrationTest {
             .toCompletableFuture()
             .get(2, TimeUnit.SECONDS);
         assertThat(survivor.toString()).isEqualTo("kept");
+    }
+
+    @Test
+    void should_round_trip_binary_value_byte_identical() throws Exception {
+        byte[] payload = new byte[1024];
+        for (int i = 0; i < payload.length; i++) {
+            payload[i] = (byte) i;
+        }
+
+        delegate.putBinaryAsync(element("bin-1", payload, 0)).toCompletionStage().toCompletableFuture().get(2, TimeUnit.SECONDS);
+
+        Element retrieved = delegate.getBinaryAsync("bin-1").toCompletionStage().toCompletableFuture().get(2, TimeUnit.SECONDS);
+
+        assertThat(retrieved).isNotNull();
+        assertThat(retrieved.value()).isInstanceOf(byte[].class);
+        assertThat((byte[]) retrieved.value()).isEqualTo(payload);
+    }
+
+    @Test
+    void should_preserve_non_utf8_bytes_via_binary_path() throws Exception {
+        byte[] payload = new byte[] { (byte) 0xC0, (byte) 0xC1, (byte) 0xF5, (byte) 0xFF, 0x00, 0x01 };
+
+        delegate.putBinaryAsync(element("bin-2", payload, 0)).toCompletionStage().toCompletableFuture().get(2, TimeUnit.SECONDS);
+
+        Element retrieved = delegate.getBinaryAsync("bin-2").toCompletionStage().toCompletableFuture().get(2, TimeUnit.SECONDS);
+
+        assertThat((byte[]) retrieved.value()).isEqualTo(payload);
+    }
+
+    @Test
+    void getBinaryAsync_should_return_null_when_missing() throws Exception {
+        Element retrieved = delegate.getBinaryAsync("absent").toCompletionStage().toCompletableFuture().get(2, TimeUnit.SECONDS);
+
+        assertThat(retrieved).isNull();
+    }
+
+    @Test
+    void putBinaryAsync_should_honor_ttl() throws Exception {
+        byte[] payload = new byte[] { 1, 2, 3 };
+        delegate.putBinaryAsync(element("bin-ttl", payload, 1)).toCompletionStage().toCompletableFuture().get(2, TimeUnit.SECONDS);
+
+        long ttl = redisAPI.ttl("gravitee:bin-ttl").toCompletionStage().toCompletableFuture().get(2, TimeUnit.SECONDS).toLong();
+
+        assertThat(ttl).isBetween(1L, 60L);
+    }
+
+    @Test
+    void putBinaryAsync_should_use_plain_set_when_ttl_zero() throws Exception {
+        // ttl=0 and default TTL=0 ⇒ resolveTtl returns 0 ⇒ plain SET branch (no expiry).
+        RedisDelegate noTtlDelegate = new RedisDelegate(redisClient, "gravitee:", Map.of(), 0, false, 2000L);
+        byte[] payload = new byte[] { 4, 5, 6 };
+
+        noTtlDelegate.putBinaryAsync(element("bin-no-ttl", payload, 0)).toCompletionStage().toCompletableFuture().get(2, TimeUnit.SECONDS);
+
+        long ttl = redisAPI.ttl("gravitee:bin-no-ttl").toCompletionStage().toCompletableFuture().get(2, TimeUnit.SECONDS).toLong();
+        // -1 = key exists, no associated TTL
+        assertThat(ttl).isEqualTo(-1L);
+
+        Element retrieved = noTtlDelegate.getBinaryAsync("bin-no-ttl").toCompletionStage().toCompletableFuture().get(2, TimeUnit.SECONDS);
+        assertThat((byte[]) retrieved.value()).isEqualTo(payload);
+    }
+
+    @Test
+    void putBinaryAsync_should_fail_with_clear_error_for_non_byte_array_value() throws Exception {
+        try {
+            delegate
+                .putBinaryAsync(element("bin-bad", "this is a String, not byte[]", 0))
+                .toCompletionStage()
+                .toCompletableFuture()
+                .get(2, TimeUnit.SECONDS);
+            org.assertj.core.api.Fail.fail("expected IllegalArgumentException");
+        } catch (java.util.concurrent.ExecutionException e) {
+            assertThat(e.getCause())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("bin-bad")
+                .hasMessageContaining("String");
+        }
+    }
+
+    @Test
+    void string_path_should_still_work_unchanged() {
+        delegate.put(element("text-key", "text-value", 0));
+
+        Element retrieved = delegate.get("text-key");
+
+        assertThat(retrieved.value()).isEqualTo("text-value");
     }
 
     private static Element element(Object key, Object value, int ttl) {
