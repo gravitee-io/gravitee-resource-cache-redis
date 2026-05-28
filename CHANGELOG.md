@@ -1,3 +1,10 @@
+# [5.0.0-alpha.3](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/5.0.0-alpha.2...5.0.0-alpha.3) (2026-05-28)
+
+
+### Features
+
+* **redis-cache:** override getBinaryAsync/putBinaryAsync for binary-safe values (APIM-13628) ([0530194](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/0530194d8b3150ee0da36909a099121d40c246ac))
+
 # [5.0.0-alpha.2](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/5.0.0-alpha.1...5.0.0-alpha.2) (2026-04-23)
 
 
