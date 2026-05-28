@@ -126,7 +126,7 @@ public class RedisCacheResource extends CacheResource<RedisCacheResourceConfigur
 
     private Cache getCache(Map<String, Object> contextAttributes) {
         return new RedisDelegate(
-            redisAPI,
+            redisClient,
             "gravitee:",
             contextAttributes,
             (int) configuration().getTimeToLiveSeconds(),
