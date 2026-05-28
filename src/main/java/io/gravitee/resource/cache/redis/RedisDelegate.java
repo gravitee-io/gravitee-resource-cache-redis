@@ -20,7 +20,10 @@ import io.gravitee.resource.cache.api.Cache;
 import io.gravitee.resource.cache.api.Element;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
+import io.vertx.redis.client.Command;
+import io.vertx.redis.client.Redis;
 import io.vertx.redis.client.RedisAPI;
+import io.vertx.redis.client.Request;
 import io.vertx.redis.client.Response;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,22 +31,38 @@ import java.util.Map;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import lombok.CustomLog;
-import lombok.RequiredArgsConstructor;
 
 /**
  * @author Guillaume CUSNIEUX (guillaume.cusnieux at graviteesource.com)
  * @author GraviteeSource Team
  */
 @CustomLog
-@RequiredArgsConstructor
 public class RedisDelegate implements Cache {
 
+    private final Redis redisClient;
     private final RedisAPI redisAPI;
     private final String cacheName;
     private final Map<String, Object> contextAttributes;
     private final int timeToLiveSeconds;
     private final boolean releaseCache;
     private final long commandTimeoutMs;
+
+    public RedisDelegate(
+        Redis redisClient,
+        String cacheName,
+        Map<String, Object> contextAttributes,
+        int timeToLiveSeconds,
+        boolean releaseCache,
+        long commandTimeoutMs
+    ) {
+        this.redisClient = redisClient;
+        this.redisAPI = RedisAPI.api(redisClient);
+        this.cacheName = cacheName;
+        this.contextAttributes = contextAttributes;
+        this.timeToLiveSeconds = timeToLiveSeconds;
+        this.releaseCache = releaseCache;
+        this.commandTimeoutMs = commandTimeoutMs;
+    }
 
     @Override
     public String getName() {
@@ -100,6 +119,37 @@ public class RedisDelegate implements Cache {
             future = redisAPI.set(List.of(redisKey, value));
         }
         return future.timeout(commandTimeoutMs, TimeUnit.MILLISECONDS).mapEmpty();
+    }
+
+    @Override
+    public Future<Element> getBinaryAsync(Object key) {
+        String redisKey = buildKey(key);
+        Request request = Request.cmd(Command.GET).arg(redisKey);
+        return redisClient
+            .send(request)
+            .timeout(commandTimeoutMs, TimeUnit.MILLISECONDS)
+            .map(response -> response != null ? toElement(key, response.toBytes()) : null);
+    }
+
+    @Override
+    public Future<Void> putBinaryAsync(Element element) {
+        Object raw = element.value();
+        if (!(raw instanceof byte[] value)) {
+            return Future.failedFuture(
+                new IllegalArgumentException(
+                    "putBinaryAsync requires byte[] value for key '" +
+                        element.key() +
+                        "', got " +
+                        (raw == null ? "null" : raw.getClass().getName())
+                )
+            );
+        }
+        int ttl = resolveTtl(element);
+        String redisKey = buildKey(element.key());
+        Request request = ttl > 0
+            ? Request.cmd(Command.SETEX).arg(redisKey).arg(String.valueOf(ttl)).arg(value)
+            : Request.cmd(Command.SET).arg(redisKey).arg(value);
+        return redisClient.send(request).timeout(commandTimeoutMs, TimeUnit.MILLISECONDS).mapEmpty();
     }
 
     @Override
@@ -190,7 +240,7 @@ public class RedisDelegate implements Cache {
         return ttl;
     }
 
-    private static Element toElement(Object key, String value) {
+    private static Element toElement(Object key, Object value) {
         return new Element() {
             @Override
             public Object key() {
