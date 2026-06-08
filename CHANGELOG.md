@@ -1,3 +1,10 @@
+# [5.0.0-alpha.4](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/5.0.0-alpha.3...5.0.0-alpha.4) (2026-06-08)
+
+
+### Bug Fixes
+
+* **redis-cache:** fail open on Redis errors so an outage degrades to no-cache [APIM-14356] ([37bc802](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/37bc80206782f607c843e7fb94cb3e202784dd56))
+
 # [5.0.0-alpha.3](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/5.0.0-alpha.2...5.0.0-alpha.3) (2026-05-28)
 
 
