@@ -104,7 +104,19 @@ public class RedisDelegate implements Cache {
         return redisAPI
             .get(redisKey)
             .timeout(commandTimeoutMs, TimeUnit.MILLISECONDS)
-            .map(response -> response != null ? toElement(key, response.toString()) : null);
+            .map(response -> response != null ? toElement(key, response.toString()) : null)
+            .otherwise(failOpenMiss("get", key));
+    }
+
+    /**
+     * Fail-open for reads: on any Redis error (unreachable, timeout, command failure) log and
+     * treat it as a cache miss so the caller proceeds to the origin instead of failing the request.
+     */
+    private java.util.function.Function<Throwable, Element> failOpenMiss(String op, Object key) {
+        return error -> {
+            log.warn("[redis-cache-{}] Redis operation failed for key '{}', treating as cache miss: {}", op, key, error.getMessage());
+            return null;
+        };
     }
 
     @Override
@@ -118,7 +130,18 @@ public class RedisDelegate implements Cache {
         } else {
             future = redisAPI.set(List.of(redisKey, value));
         }
-        return future.timeout(commandTimeoutMs, TimeUnit.MILLISECONDS).mapEmpty();
+        return future.timeout(commandTimeoutMs, TimeUnit.MILLISECONDS).<Void>mapEmpty().otherwise(failOpenWrite("put", element.key()));
+    }
+
+    /**
+     * Fail-open for writes/evictions: on any Redis error log and complete normally so the cache
+     * acts as a transparent optimisation — a Redis outage degrades to "no caching", never a request failure.
+     */
+    private java.util.function.Function<Throwable, Void> failOpenWrite(String op, Object key) {
+        return error -> {
+            log.warn("[redis-cache-{}] Redis operation failed for key '{}', skipping cache {}: {}", op, key, op, error.getMessage());
+            return null;
+        };
     }
 
     @Override
@@ -128,7 +151,8 @@ public class RedisDelegate implements Cache {
         return redisClient
             .send(request)
             .timeout(commandTimeoutMs, TimeUnit.MILLISECONDS)
-            .map(response -> response != null ? toElement(key, response.toBytes()) : null);
+            .map(response -> response != null ? toElement(key, response.toBytes()) : null)
+            .otherwise(failOpenMiss("getBinary", key));
     }
 
     @Override
@@ -149,13 +173,21 @@ public class RedisDelegate implements Cache {
         Request request = ttl > 0
             ? Request.cmd(Command.SETEX).arg(redisKey).arg(String.valueOf(ttl)).arg(value)
             : Request.cmd(Command.SET).arg(redisKey).arg(value);
-        return redisClient.send(request).timeout(commandTimeoutMs, TimeUnit.MILLISECONDS).mapEmpty();
+        return redisClient
+            .send(request)
+            .timeout(commandTimeoutMs, TimeUnit.MILLISECONDS)
+            .<Void>mapEmpty()
+            .otherwise(failOpenWrite("putBinary", element.key()));
     }
 
     @Override
     public Future<Void> evictAsync(Object key) {
         String redisKey = buildKey(key);
-        return redisAPI.del(List.of(redisKey)).timeout(commandTimeoutMs, TimeUnit.MILLISECONDS).mapEmpty();
+        return redisAPI
+            .del(List.of(redisKey))
+            .timeout(commandTimeoutMs, TimeUnit.MILLISECONDS)
+            .<Void>mapEmpty()
+            .otherwise(failOpenWrite("evict", key));
     }
 
     /**
@@ -177,7 +209,7 @@ public class RedisDelegate implements Cache {
             log.warn("[redis-cache] clear() skipped: ATTR_API_DEPLOYED_AT missing from context");
             return Future.succeededFuture();
         }
-        return scanAndDelete("0", cacheName + "*:" + deployAt);
+        return scanAndDelete("0", cacheName + "*:" + deployAt).otherwise(failOpenWrite("clear", cacheName));
     }
 
     private Future<Void> scanAndDelete(String cursor, String pattern) {
