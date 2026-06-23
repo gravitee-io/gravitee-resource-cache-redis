@@ -1,3 +1,27 @@
+# [5.0.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.2.1...5.0.0) (2026-06-23)
+
+
+### Bug Fixes
+
+* **redis-cache:** fail open on Redis errors so an outage degrades to no-cache [APIM-14356] ([aac386f](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/aac386f17b74f961ece750c7b686ddd42daf5d74))
+* **redis-cache:** move pool/timeout config to gravitee.yml (revert 6b98fb9) ([28e63e9](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/28e63e9980301129a284cb1ea90f23c6ee7b575f))
+
+
+* feat(redis-cache)!: require java 21 and apim 4.12 ([ef0ce56](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/ef0ce563acb983240e4ffae9c931c3d8b609a243))
+
+
+### Features
+
+* **redis-cache:** override getBinaryAsync/putBinaryAsync for binary-safe values (APIM-13628) ([6e335df](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/6e335dfc798a7c6d469bea8df20dda97dbb5e8a9))
+
+
+### BREAKING CHANGES
+
+* plugin requires Java 21 at runtime and APIM 4.12+.
+gravitee-parent 22.6.0 -> 24.0.2 raises the compile target from Java 17 to 21.
+gravitee-apim BOM is pinned to 4.12.0-SNAPSHOT for the new VertxRedisClientFactory
+client-sharing contract.
+
 ## [4.2.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.2.0...4.2.1) (2026-04-23)
 
 
