@@ -35,7 +35,7 @@
     <description>The resource is used to maintain a cache and link it to the API lifecycle. Redis provides a different range of persistence options, it means that the cache can keep data after reboot.</description>
 
     <properties>
-        <gravitee-apim.version>4.12.0-milestone.6</gravitee-apim.version>
+        <gravitee-apim.version>4.12.0</gravitee-apim.version>
         <gravitee-plugin-common-configurations-maven-plugin.version>1.0.0</gravitee-plugin-common-configurations-maven-plugin.version>
 
         <properties-maven-plugin.version>1.3.0</properties-maven-plugin.version>
