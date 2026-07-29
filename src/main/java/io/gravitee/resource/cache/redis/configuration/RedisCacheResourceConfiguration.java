@@ -19,12 +19,14 @@ import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.gravitee.plugin.annotation.ConfigurationEvaluator;
 import io.gravitee.plugin.configurations.ssl.SslOptions;
 import io.gravitee.resource.api.ResourceConfiguration;
 import io.gravitee.secrets.api.annotation.Secret;
 import io.gravitee.secrets.api.el.FieldKind;
 import java.util.Map;
+import lombok.AccessLevel;
 import lombok.CustomLog;
 import lombok.Getter;
 import lombok.Setter;
@@ -40,6 +42,8 @@ import lombok.Setter;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RedisCacheResourceConfiguration implements ResourceConfiguration {
 
+    private static final ObjectMapper SSL_MAPPER = new ObjectMapper();
+
     // Redis connection fields (aligned with RedisClientOptions shape)
     private String host = "localhost";
     private int port = 6379;
@@ -48,7 +52,10 @@ public class RedisCacheResourceConfiguration implements ResourceConfiguration {
     private String password;
 
     private boolean useSsl = true;
+
+    @Setter(AccessLevel.NONE)
     private SslOptions ssl;
+
     private RedisSentinelConfiguration sentinel = new RedisSentinelConfiguration();
 
     // Cache-specific fields
@@ -116,6 +123,21 @@ public class RedisCacheResourceConfiguration implements ResourceConfiguration {
     @JsonGetter("sentinelMode")
     public boolean getSentinelMode() {
         return isSentinelEnabled();
+    }
+
+    /**
+     * Backward compatibility: accept legacy boolean {@code ssl} (ignored; use {@code useSsl})
+     * or an {@link SslOptions} object.
+     */
+    @JsonSetter("ssl")
+    public void setSsl(Object ssl) {
+        if (ssl == null) {
+            this.ssl = null;
+        } else if (ssl instanceof Boolean legacyBoolean) {
+            log.warn("Legacy boolean 'ssl={}' detected on Redis cache resource config; ignored. Use 'useSsl' instead.", legacyBoolean);
+        } else {
+            this.ssl = SSL_MAPPER.convertValue(ssl, SslOptions.class);
+        }
     }
 
     /**

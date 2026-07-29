@@ -466,6 +466,26 @@ class RedisCacheResourceTest {
         assertThat(cfg).isNotNull();
     }
 
+    @Test
+    void should_ignore_legacy_boolean_ssl_and_keep_useSsl_on_deserialization() throws Exception {
+        String json = "{\"useSsl\":true,\"ssl\":true}";
+        RedisCacheResourceConfiguration cfg = new ObjectMapper().readValue(json, RedisCacheResourceConfiguration.class);
+
+        assertThat(cfg).isNotNull();
+        assertThat(cfg.isUseSsl()).isTrue();
+        assertThat(cfg.getSsl()).isNull();
+    }
+
+    @Test
+    void should_deserialize_ssl_object_normally() throws Exception {
+        String json = "{\"ssl\":{\"trustAll\":true}}";
+        RedisCacheResourceConfiguration cfg = new ObjectMapper().readValue(json, RedisCacheResourceConfiguration.class);
+
+        assertThat(cfg).isNotNull();
+        assertThat(cfg.getSsl()).isNotNull();
+        assertThat(cfg.getSsl().isTrustAll()).isTrue();
+    }
+
     private static HostAndPort hostAndPort(String host, int port) {
         HostAndPort hp = new HostAndPort();
         hp.setHost(host);
