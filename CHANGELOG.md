@@ -1,3 +1,10 @@
+## [5.0.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/5.0.0...5.0.1) (2026-07-29)
+
+
+### Bug Fixes
+
+* **redis-cache:** Added legacy check for setSsl ([#91](https://github.com/gravitee-io/gravitee-resource-cache-redis/issues/91)) ([5cd8841](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/5cd88419ffe80465ebe3f2704656a37cd3c4745e))
+
 # [5.0.0](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/4.2.1...5.0.0) (2026-06-23)
 
 
