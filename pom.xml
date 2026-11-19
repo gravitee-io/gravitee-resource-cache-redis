@@ -35,6 +35,7 @@
     <description>The resource is used to maintain a cache and link it to the API lifecycle. Redis provides a different range of persistence options, it means that the cache can keep data after reboot.</description>
 
     <properties>
+        <testcontainers.version>2.0.5</testcontainers.version>
         <gravitee-apim.version>4.9.17-SNAPSHOT</gravitee-apim.version>
 
         <properties-maven-plugin.version>1.2.1</properties-maven-plugin.version>
@@ -45,6 +46,14 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Before the other boms, which still manage Testcontainers 1.x (Docker 29 needs 2.x) -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
             <!-- Import bom to properly inherit all dependencies -->
             <dependency>
                 <groupId>io.gravitee.apim</groupId>
@@ -190,7 +199,7 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
