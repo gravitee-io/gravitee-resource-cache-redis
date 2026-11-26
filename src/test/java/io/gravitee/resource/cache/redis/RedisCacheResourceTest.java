@@ -486,6 +486,15 @@ class RedisCacheResourceTest {
         assertThat(cfg.getSsl().isTrustAll()).isTrue();
     }
 
+    @Test
+    void should_validate_server_certificate_when_ssl_object_omits_trust_settings() throws Exception {
+        String json = "{\"useSsl\":true,\"ssl\":{}}";
+        RedisCacheResourceConfiguration cfg = new ObjectMapper().readValue(json, RedisCacheResourceConfiguration.class);
+
+        assertThat(cfg.getSsl().isTrustAll()).isFalse();
+        assertThat(cfg.getSsl().isHostnameVerifier()).isTrue();
+    }
+
     private static HostAndPort hostAndPort(String host, int port) {
         HostAndPort hp = new HostAndPort();
         hp.setHost(host);
