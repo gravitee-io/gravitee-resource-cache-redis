@@ -16,7 +16,24 @@
             "default": true
         },
         "ssl": {
-            "$ref": "#/gioExternalDefinitions/sslOptions",
+            "oneOf": [
+                {
+                    "$ref": "#/gioExternalDefinitions/sslOptions",
+                    "title": "SSL Options"
+                },
+                {
+                    "type": "boolean",
+                    "const": true,
+                    "title": "Legacy boolean true (no certificate validation)",
+                    "description": "Value from older API definitions, ignored: 'useSsl' turns SSL on. Without SSL options, the gateway trusts any server certificate and skips host name verification. Select 'SSL Options' to validate the Redis server certificate."
+                },
+                {
+                    "type": "boolean",
+                    "const": false,
+                    "title": "Legacy boolean false (no certificate validation)",
+                    "description": "Value from older API definitions, ignored: 'useSsl' turns SSL on. Without SSL options, the gateway trusts any server certificate and skips host name verification. Select 'SSL Options' to validate the Redis server certificate."
+                }
+            ],
             "gioConfig": {
                 "displayIf": {
                     "$eq": {
