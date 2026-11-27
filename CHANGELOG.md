@@ -1,3 +1,10 @@
+## [5.0.2](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/5.0.1...5.0.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **schema:** accept legacy boolean ssl in the resource configuration ([e43b176](https://github.com/gravitee-io/gravitee-resource-cache-redis/commit/e43b17663362296b14e3c0ad00c0b88afa0581ce))
+
 ## [5.0.1](https://github.com/gravitee-io/gravitee-resource-cache-redis/compare/5.0.0...5.0.1) (2026-07-29)
 
 
